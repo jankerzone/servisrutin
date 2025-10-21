@@ -15,15 +15,55 @@ app.get('/api/health', (c) => {
 	return c.json({ status: 'ok', message: 'Servis Rutin API is running' });
 });
 
-// Vehicle routes (placeholder untuk phase berikutnya)
+// Vehicle routes
 app.get('/api/vehicles', async (c) => {
-	// TODO: Implement vehicle listing
-	return c.json({ vehicles: [] });
+	try {
+		const db = c.env.DB;
+		const results = await db.prepare('SELECT * FROM kendaraan ORDER BY nama').all();
+		return c.json(results);
+	} catch (error) {
+		console.error('Error fetching vehicles:', error);
+		return c.json({ error: String(error) }, 500);
+	}
 });
 
 app.post('/api/vehicles', async (c) => {
-	// TODO: Implement vehicle creation
-	return c.json({ message: 'Vehicle creation endpoint' });
+	try {
+		const body = await c.req.json();
+		const { nama, tipe, plat, tahun, bulanPajak, currentKm } = body;
+		const db = c.env.DB;
+		
+		await db
+			.prepare(
+				'INSERT INTO kendaraan (nama, tipe, plat, tahun, bulan_pajak, current_km) VALUES (?, ?, ?, ?, ?, ?)'
+			)
+			.bind(nama, tipe, plat, tahun, bulanPajak, currentKm || 0)
+			.run();
+		
+		return c.json({ success: true });
+	} catch (error) {
+		console.error('Error creating vehicle:', error);
+		return c.json({ success: false, error: String(error) }, 500);
+	}
+});
+
+app.put('/api/vehicles/:id/km', async (c) => {
+	try {
+		const id = c.req.param('id');
+		const body = await c.req.json();
+		const { currentKm } = body;
+		const db = c.env.DB;
+		
+		await db
+			.prepare('UPDATE kendaraan SET current_km = ? WHERE id = ?')
+			.bind(currentKm, id)
+			.run();
+		
+		return c.json({ success: true });
+	} catch (error) {
+		console.error('Error updating vehicle km:', error);
+		return c.json({ success: false, error: String(error) }, 500);
+	}
 });
 
 // Service item routes (placeholder untuk phase berikutnya)

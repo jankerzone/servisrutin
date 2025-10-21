@@ -6,6 +6,8 @@ import {
 	LinearProgress,
 	Box,
 	CircularProgress,
+	Snackbar,
+	Alert,
 } from '@mui/material';
 import { format } from 'date-fns';
 
@@ -28,10 +30,16 @@ interface ServiceListProps {
 export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 0 }: ServiceListProps) {
 	const [items, setItems] = useState<ServiceItem[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [showAlert, setShowAlert] = useState(false);
+	const [alertMessage, setAlertMessage] = useState('');
 
 	useEffect(() => {
 		fetchServiceItems();
 	}, [kendaraanId, sortBy]);
+
+	useEffect(() => {
+		checkForDueServices();
+	}, [items, currentKm]);
 
 	const fetchServiceItems = async () => {
 		try {
@@ -43,6 +51,43 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 			console.error('Error fetching service items:', error);
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const checkForDueServices = () => {
+		const dueItems: string[] = [];
+
+		items.forEach((item) => {
+			if (item.intervalType === 'KM' && item.lastKm && item.intervalValue) {
+				const kmRemaining = (item.lastKm + item.intervalValue) - currentKm;
+				if (kmRemaining <= 500 && kmRemaining > 0) {
+					dueItems.push(`${item.nama} (${kmRemaining} km remaining)`);
+				} else if (kmRemaining <= 0) {
+					dueItems.push(`${item.nama} (OVERDUE)`);
+				}
+			}
+
+			if (['DAY', 'MONTH', 'YEAR'].includes(item.intervalType || '') && item.lastDate && item.intervalValue) {
+				const lastDate = new Date(item.lastDate);
+				let dueDate = new Date(lastDate);
+
+				if (item.intervalType === 'DAY') dueDate.setDate(dueDate.getDate() + item.intervalValue);
+				if (item.intervalType === 'MONTH') dueDate.setMonth(dueDate.getMonth() + item.intervalValue);
+				if (item.intervalType === 'YEAR') dueDate.setFullYear(dueDate.getFullYear() + item.intervalValue);
+
+				const daysRemaining = Math.floor((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+
+				if (daysRemaining <= 7 && daysRemaining > 0) {
+					dueItems.push(`${item.nama} (${daysRemaining} days remaining)`);
+				} else if (daysRemaining <= 0) {
+					dueItems.push(`${item.nama} (OVERDUE)`);
+				}
+			}
+		});
+
+		if (dueItems.length > 0) {
+			setAlertMessage(`Service due soon: ${dueItems.join(', ')}`);
+			setShowAlert(true);
 		}
 	};
 
@@ -126,8 +171,20 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 	}
 
 	return (
-		<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-			{items.map((item) => {
+		<>
+			<Snackbar
+				open={showAlert}
+				autoHideDuration={10000}
+				onClose={() => setShowAlert(false)}
+				anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+			>
+				<Alert onClose={() => setShowAlert(false)} severity="warning" sx={{ width: '100%' }}>
+					{alertMessage}
+				</Alert>
+			</Snackbar>
+
+			<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+				{items.map((item) => {
 				const progress = calculateProgress(item);
 				const color = progress < 50 ? 'success' : progress < 80 ? 'warning' : 'error';
 				
@@ -166,6 +223,7 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 					</Card>
 				);
 			})}
-		</Box>
+			</Box>
+		</>
 	);
 }
