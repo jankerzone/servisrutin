@@ -10,6 +10,7 @@
 		"deploy": "npm run build:frontend && wrangler deploy",
 		"start": "wrangler dev",
 		"test": "vitest",
+		"lint": "eslint client/src --ext .ts,.tsx",
 		"cf-typegen": "wrangler types",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "wrangler d1 migrations apply servis-rutin-db --local",
@@ -21,8 +22,11 @@
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/react": "^19.2.2",
 		"@types/react-dom": "^19.2.2",
+		"@typescript-eslint/eslint-plugin": "^8.46.2",
+		"@typescript-eslint/parser": "^8.46.2",
 		"@vitejs/plugin-react": "^5.0.4",
 		"drizzle-kit": "^0.31.5",
+		"eslint": "^9.38.0",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0",
 		"typescript": "^5.5.2",
@@ -31,8 +35,15 @@
 		"wrangler": "^4.44.0"
 	},
 	"dependencies": {
+		"@emotion/react": "^11.14.0",
+		"@emotion/styled": "^11.14.1",
+		"@mui/icons-material": "^7.3.4",
+		"@mui/material": "^7.3.4",
+		"@mui/x-date-pickers": "^8.14.1",
 		"better-sqlite3": "^12.4.1",
+		"date-fns": "^4.1.0",
 		"drizzle-orm": "^0.44.6",
-		"hono": "^4.10.1"
+		"hono": "^4.10.1",
+		"zustand": "^5.0.8"
 	}
 }
