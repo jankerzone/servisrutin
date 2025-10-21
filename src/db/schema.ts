@@ -7,6 +7,7 @@ export const kendaraan = sqliteTable('kendaraan', {
 	plat: text('plat'),
 	tahun: integer('tahun'),
 	bulanPajak: integer('bulan_pajak'),
+	currentKm: integer('current_km').default(0),
 });
 
 export const serviceItems = sqliteTable('service_items', {

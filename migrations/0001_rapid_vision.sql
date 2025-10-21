@@ -1,0 +1,1 @@
+ALTER TABLE `kendaraan` ADD `current_km` integer DEFAULT 0;
