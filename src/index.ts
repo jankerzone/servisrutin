@@ -37,6 +37,28 @@ app.post('/api/vehicles/:vehicleId/services', async (c) => {
 	return c.json({ message: 'Service item creation endpoint' });
 });
 
+app.get('/api/service-items', async (c) => {
+	try {
+		const kendaraanId = c.req.query('kendaraanId');
+		const order = c.req.query('order') || 'nama';
+		const db = c.env.DB;
+		
+		if (!kendaraanId) {
+			return c.json({ error: 'kendaraanId is required' }, 400);
+		}
+		
+		const results = await db
+			.prepare(`SELECT * FROM service_items WHERE kendaraan_id = ? ORDER BY ${order}`)
+			.bind(kendaraanId)
+			.all();
+		
+		return c.json(results);
+	} catch (error) {
+		console.error('Error fetching service items:', error);
+		return c.json({ error: String(error) }, 500);
+	}
+});
+
 app.post('/api/service-items', async (c) => {
 	try {
 		const body = await c.req.json();
