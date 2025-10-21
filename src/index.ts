@@ -37,4 +37,24 @@ app.post('/api/vehicles/:vehicleId/services', async (c) => {
 	return c.json({ message: 'Service item creation endpoint' });
 });
 
+app.post('/api/service-items', async (c) => {
+	try {
+		const body = await c.req.json();
+		const { kendaraanId, nama, intervalType, intervalValue, lastKm, lastDate } = body;
+		const db = c.env.DB;
+		
+		await db
+			.prepare(
+				'INSERT INTO service_items (kendaraan_id, nama, interval_type, interval_value, last_km, last_date) VALUES (?, ?, ?, ?, ?, ?)'
+			)
+			.bind(kendaraanId, nama, intervalType, intervalValue, lastKm, lastDate)
+			.run();
+		
+		return c.json({ success: true });
+	} catch (error) {
+		console.error('Error creating service item:', error);
+		return c.json({ success: false, error: String(error) }, 500);
+	}
+});
+
 export default app;

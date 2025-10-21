@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
+import { ThemeProvider, createTheme, CssBaseline, Container, AppBar, Toolbar, Typography } from '@mui/material';
+import ServiceView from './components/ServiceView';
+import { useKendaraanStore } from './store/useKendaraanStore';
 import './App.css';
+
+const theme = createTheme();
 
 function App() {
 	const [health, setHealth] = useState<{ status: string; message: string } | null>(null);
+	const selectedKendaraanId = useKendaraanStore((state) => state.selectedKendaraanId);
 
 	useEffect(() => {
 		fetch('/api/health')
@@ -12,36 +18,26 @@ function App() {
 	}, []);
 
 	return (
-		<div className="app">
-			<header>
-				<h1>Servis Rutin</h1>
-				<p>Track your vehicle service schedule</p>
-			</header>
+		<ThemeProvider theme={theme}>
+			<CssBaseline />
+			<AppBar position="static">
+				<Toolbar>
+					<Typography variant="h6" component="div">
+						Servis Rutin
+					</Typography>
+				</Toolbar>
+			</AppBar>
 			
-			<main>
+			<Container maxWidth="md" sx={{ mt: 4 }}>
 				{health && (
-					<div className="health-check">
-						<p>API Status: <strong>{health.status}</strong></p>
-						<p>{health.message}</p>
-					</div>
+					<Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+						API Status: {health.status}
+					</Typography>
 				)}
 				
-				<section className="welcome">
-					<h2>Welcome to Servis Rutin</h2>
-					<p>Your simple vehicle service tracker - like Simply Auto</p>
-					<ul>
-						<li>Track service reminders based on odometer (km) or time</li>
-						<li>Manage multiple vehicles (motor/mobil)</li>
-						<li>Visual progress bars for due dates</li>
-					</ul>
-				</section>
-
-				<div className="placeholder">
-					<p>Phase 1: Setup Complete ✓</p>
-					<p>Next: Onboarding & Service Item Management</p>
-				</div>
-			</main>
-		</div>
+				{selectedKendaraanId && <ServiceView kendaraanId={selectedKendaraanId} />}
+			</Container>
+		</ThemeProvider>
 	);
 }
 
