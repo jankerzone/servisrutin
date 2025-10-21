@@ -29,8 +29,18 @@ export default function VehicleSelector() {
 	const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 	const [showKmDialog, setShowKmDialog] = useState(false);
 	const [kmInput, setKmInput] = useState('');
+	const [showAddDialog, setShowAddDialog] = useState(false);
+	const [newVehicle, setNewVehicle] = useState({
+		nama: '',
+		tipe: '',
+		plat: '',
+		tahun: '',
+		bulanPajak: '',
+		currentKm: '',
+	});
 	const selectedKendaraanId = useKendaraanStore((state) => state.selectedKendaraanId);
 	const setSelectedKendaraanId = useKendaraanStore((state) => state.setSelectedKendaraanId);
+	const setCurrentKm = useKendaraanStore((state) => state.setCurrentKm);
 
 	useEffect(() => {
 		fetchVehicles();
@@ -40,14 +50,77 @@ export default function VehicleSelector() {
 		try {
 			const response = await fetch('/api/vehicles');
 			const data = await response.json();
-			setVehicles(data.results || []);
+			const transformedVehicles = (data.results || []).map((v: any) => ({
+				id: v.id,
+				nama: v.nama,
+				tipe: v.tipe,
+				plat: v.plat,
+				tahun: v.tahun,
+				bulanPajak: v.bulan_pajak,
+				currentKm: v.current_km,
+			}));
+			setVehicles(transformedVehicles);
+			
+			if (selectedKendaraanId) {
+				const currentVehicle = transformedVehicles.find((v: Vehicle) => v.id === selectedKendaraanId);
+				if (currentVehicle) {
+					setCurrentKm(currentVehicle.currentKm || 0);
+				}
+			}
 		} catch (error) {
 			console.error('Error fetching vehicles:', error);
 		}
 	};
 
 	const handleVehicleChange = (event: SelectChangeEvent<number>) => {
-		setSelectedKendaraanId(event.target.value as number);
+		const value = event.target.value;
+		if (value === -1) {
+			setShowAddDialog(true);
+		} else {
+			setSelectedKendaraanId(value as number);
+			const vehicle = vehicles.find((v) => v.id === value);
+			if (vehicle) {
+				setCurrentKm(vehicle.currentKm || 0);
+			}
+		}
+	};
+
+	const handleAddVehicle = async () => {
+		if (!newVehicle.nama) return;
+
+		try {
+			const payload = {
+				nama: newVehicle.nama,
+				tipe: newVehicle.tipe || null,
+				plat: newVehicle.plat || null,
+				tahun: newVehicle.tahun ? parseInt(newVehicle.tahun) : null,
+				bulanPajak: newVehicle.bulanPajak ? parseInt(newVehicle.bulanPajak) : null,
+				currentKm: newVehicle.currentKm ? parseInt(newVehicle.currentKm) : 0,
+			};
+
+			const response = await fetch('/api/vehicles', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				setShowAddDialog(false);
+				setNewVehicle({
+					nama: '',
+					tipe: '',
+					plat: '',
+					tahun: '',
+					bulanPajak: '',
+					currentKm: '',
+				});
+				await fetchVehicles();
+				setSelectedKendaraanId(data.result.id);
+			}
+		} catch (error) {
+			console.error('Error adding vehicle:', error);
+		}
 	};
 
 	const handleUpdateKm = async () => {
@@ -87,6 +160,9 @@ export default function VehicleSelector() {
 							{vehicle.nama} {vehicle.plat ? `(${vehicle.plat})` : ''}
 						</MenuItem>
 					))}
+					<MenuItem value={-1} sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+						+ Tambahkan Kendaraan Baru
+					</MenuItem>
 				</Select>
 			</FormControl>
 
@@ -118,6 +194,66 @@ export default function VehicleSelector() {
 					<Button onClick={() => setShowKmDialog(false)}>Cancel</Button>
 					<Button onClick={handleUpdateKm} variant="contained" disabled={!kmInput}>
 						Update
+					</Button>
+				</DialogActions>
+			</Dialog>
+
+			<Dialog open={showAddDialog} onClose={() => setShowAddDialog(false)} maxWidth="sm" fullWidth>
+				<DialogTitle>Tambah Kendaraan Baru</DialogTitle>
+				<DialogContent>
+					<TextField
+						autoFocus
+						margin="dense"
+						label="Nama Kendaraan"
+						fullWidth
+						required
+						value={newVehicle.nama}
+						onChange={(e) => setNewVehicle({ ...newVehicle, nama: e.target.value })}
+					/>
+					<TextField
+						margin="dense"
+						label="Tipe"
+						fullWidth
+						value={newVehicle.tipe}
+						onChange={(e) => setNewVehicle({ ...newVehicle, tipe: e.target.value })}
+					/>
+					<TextField
+						margin="dense"
+						label="Plat Nomor"
+						fullWidth
+						value={newVehicle.plat}
+						onChange={(e) => setNewVehicle({ ...newVehicle, plat: e.target.value })}
+					/>
+					<TextField
+						margin="dense"
+						label="Tahun"
+						type="number"
+						fullWidth
+						value={newVehicle.tahun}
+						onChange={(e) => setNewVehicle({ ...newVehicle, tahun: e.target.value })}
+					/>
+					<TextField
+						margin="dense"
+						label="Bulan Pajak (1-12)"
+						type="number"
+						fullWidth
+						inputProps={{ min: 1, max: 12 }}
+						value={newVehicle.bulanPajak}
+						onChange={(e) => setNewVehicle({ ...newVehicle, bulanPajak: e.target.value })}
+					/>
+					<TextField
+						margin="dense"
+						label="Current KM"
+						type="number"
+						fullWidth
+						value={newVehicle.currentKm}
+						onChange={(e) => setNewVehicle({ ...newVehicle, currentKm: e.target.value })}
+					/>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setShowAddDialog(false)}>Batal</Button>
+					<Button onClick={handleAddVehicle} variant="contained" disabled={!newVehicle.nama}>
+						Tambah
 					</Button>
 				</DialogActions>
 			</Dialog>

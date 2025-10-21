@@ -119,4 +119,42 @@ app.post('/api/service-items', async (c) => {
 	}
 });
 
+app.put('/api/service-items/:id', async (c) => {
+	try {
+		const id = c.req.param('id');
+		const body = await c.req.json();
+		const { nama, intervalType, intervalValue, lastKm, lastDate } = body;
+		const db = c.env.DB;
+		
+		await db
+			.prepare(
+				'UPDATE service_items SET nama = ?, interval_type = ?, interval_value = ?, last_km = ?, last_date = ? WHERE id = ?'
+			)
+			.bind(nama, intervalType, intervalValue, lastKm, lastDate, id)
+			.run();
+		
+		return c.json({ success: true });
+	} catch (error) {
+		console.error('Error updating service item:', error);
+		return c.json({ success: false, error: String(error) }, 500);
+	}
+});
+
+app.delete('/api/service-items/:id', async (c) => {
+	try {
+		const id = c.req.param('id');
+		const db = c.env.DB;
+		
+		await db
+			.prepare('DELETE FROM service_items WHERE id = ?')
+			.bind(id)
+			.run();
+		
+		return c.json({ success: true });
+	} catch (error) {
+		console.error('Error deleting service item:', error);
+		return c.json({ success: false, error: String(error) }, 500);
+	}
+});
+
 export default app;

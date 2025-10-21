@@ -9,8 +9,8 @@ const theme = createTheme();
 
 function App() {
 	const [health, setHealth] = useState<{ status: string; message: string } | null>(null);
-	const [currentKm, setCurrentKm] = useState(0);
 	const selectedKendaraanId = useKendaraanStore((state) => state.selectedKendaraanId);
+	const currentKm = useKendaraanStore((state) => state.currentKm);
 
 	useEffect(() => {
 		fetch('/api/health')
@@ -18,18 +18,6 @@ function App() {
 			.then((data) => setHealth(data))
 			.catch((err) => console.error('Error fetching health:', err));
 	}, []);
-
-	useEffect(() => {
-		if (selectedKendaraanId) {
-			fetch('/api/vehicles')
-				.then((res) => res.json())
-				.then((data) => {
-					const vehicle = data.results?.find((v: { id: number }) => v.id === selectedKendaraanId);
-					if (vehicle) setCurrentKm(vehicle.currentKm || 0);
-				})
-				.catch((err) => console.error('Error fetching vehicle:', err));
-		}
-	}, [selectedKendaraanId]);
 
 	return (
 		<ThemeProvider theme={theme}>

@@ -8,8 +8,17 @@ import {
 	CircularProgress,
 	Snackbar,
 	Alert,
+	IconButton,
+	Dialog,
+	DialogTitle,
+	DialogContent,
+	DialogActions,
+	Button,
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { format } from 'date-fns';
+import EditServiceForm from './EditServiceForm';
 
 interface ServiceItem {
 	id: number;
@@ -32,6 +41,8 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 	const [loading, setLoading] = useState(true);
 	const [showAlert, setShowAlert] = useState(false);
 	const [alertMessage, setAlertMessage] = useState('');
+	const [editItem, setEditItem] = useState<ServiceItem | null>(null);
+	const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
 	useEffect(() => {
 		fetchServiceItems();
@@ -46,7 +57,16 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 			setLoading(true);
 			const response = await fetch(`/api/service-items?kendaraanId=${kendaraanId}&order=${sortBy}`);
 			const data = await response.json();
-			setItems(data.results || []);
+			const transformedItems = (data.results || []).map((item: any) => ({
+				id: item.id,
+				kendaraanId: item.kendaraan_id,
+				nama: item.nama,
+				intervalType: item.interval_type,
+				intervalValue: item.interval_value,
+				lastKm: item.last_km,
+				lastDate: item.last_date,
+			}));
+			setItems(transformedItems);
 		} catch (error) {
 			console.error('Error fetching service items:', error);
 		} finally {
@@ -152,6 +172,26 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 		return parts.length > 0 ? `Last: ${parts.join(' / ')}` : 'No service recorded';
 	};
 
+	const handleDelete = async (id: number) => {
+		try {
+			const response = await fetch(`/api/service-items/${id}`, {
+				method: 'DELETE',
+			});
+
+			if (response.ok) {
+				fetchServiceItems();
+				setDeleteConfirm(null);
+			}
+		} catch (error) {
+			console.error('Error deleting service item:', error);
+		}
+	};
+
+	const handleEditSuccess = () => {
+		fetchServiceItems();
+		setEditItem(null);
+	};
+
 	if (loading) {
 		return (
 			<Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -191,9 +231,19 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 				return (
 					<Card key={item.id} variant="outlined">
 						<CardContent>
-							<Typography variant="h6" gutterBottom>
-								{item.nama}
-							</Typography>
+							<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+								<Typography variant="h6" gutterBottom>
+									{item.nama}
+								</Typography>
+								<Box>
+									<IconButton size="small" onClick={() => setEditItem(item)} color="primary">
+										<EditIcon fontSize="small" />
+									</IconButton>
+									<IconButton size="small" onClick={() => setDeleteConfirm(item.id)} color="error">
+										<DeleteIcon fontSize="small" />
+									</IconButton>
+								</Box>
+							</Box>
 							
 							<Typography variant="body2" color="text.secondary" gutterBottom>
 								{getLastInfo(item)}
@@ -224,6 +274,28 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 				);
 			})}
 			</Box>
+
+			{editItem && (
+				<EditServiceForm
+					open={true}
+					onClose={() => setEditItem(null)}
+					item={editItem}
+					onSuccess={handleEditSuccess}
+				/>
+			)}
+
+			<Dialog open={deleteConfirm !== null} onClose={() => setDeleteConfirm(null)}>
+				<DialogTitle>Confirm Delete</DialogTitle>
+				<DialogContent>
+					<Typography>Are you sure you want to delete this service item?</Typography>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+					<Button onClick={() => deleteConfirm && handleDelete(deleteConfirm)} color="error" variant="contained">
+						Delete
+					</Button>
+				</DialogActions>
+			</Dialog>
 		</>
 	);
 }
