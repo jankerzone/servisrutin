@@ -1,0 +1,26 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "servis-rutin-backend",
+	"main": "src/index.ts",
+	"compatibility_date": "2024-10-21",
+	"compatibility_flags": [
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+		"directory": "./public"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "servis-rutin-db",
+			"database_id": "01bb5483-d9a9-4efe-899f-6ca0d09798fb"
+		}
+	]
+}
