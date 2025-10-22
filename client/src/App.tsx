@@ -29,17 +29,17 @@ function App() {
 					</Typography>
 				</Toolbar>
 			</AppBar>
-			
+
 			<Container maxWidth="md" sx={{ mt: 4 }}>
 				{health && (
 					<Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
 						API Status: {health.status}
 					</Typography>
 				)}
-				
+
 				<VehicleSelector />
-				
-				{selectedKendaraanId && <ServiceView kendaraanId={selectedKendaraanId} currentKm={currentKm} />}
+
+				{selectedKendaraanId && selectedKendaraanId > 0 && <ServiceView kendaraanId={selectedKendaraanId} currentKm={currentKm} />}
 			</Container>
 		</ThemeProvider>
 	);

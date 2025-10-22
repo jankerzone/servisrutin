@@ -12,6 +12,7 @@ import {
 	DialogTitle,
 	DialogContent,
 	DialogActions,
+	Typography,
 } from '@mui/material';
 import { useKendaraanStore } from '../store/useKendaraanStore';
 
@@ -38,6 +39,7 @@ export default function VehicleSelector() {
 		bulanPajak: '',
 		currentKm: '',
 	});
+	const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 	const selectedKendaraanId = useKendaraanStore((state) => state.selectedKendaraanId);
 	const setSelectedKendaraanId = useKendaraanStore((state) => state.setSelectedKendaraanId);
 	const setCurrentKm = useKendaraanStore((state) => state.setCurrentKm);
@@ -50,17 +52,27 @@ export default function VehicleSelector() {
 		try {
 			const response = await fetch('/api/vehicles');
 			const data = await response.json();
-			const transformedVehicles = (data.results || []).map((v: any) => ({
-				id: v.id,
-				nama: v.nama,
-				tipe: v.tipe,
-				plat: v.plat,
-				tahun: v.tahun,
-				bulanPajak: v.bulan_pajak,
-				currentKm: v.current_km,
-			}));
+			const transformedVehicles = (data.results || []).map(
+				(v: {
+					id: number;
+					nama: string;
+					tipe: string | null;
+					plat: string | null;
+					tahun: number | null;
+					bulan_pajak: number | null;
+					current_km: number | null;
+				}) => ({
+					id: v.id,
+					nama: v.nama,
+					tipe: v.tipe,
+					plat: v.plat,
+					tahun: v.tahun,
+					bulanPajak: v.bulan_pajak,
+					currentKm: v.current_km,
+				}),
+			);
 			setVehicles(transformedVehicles);
-			
+
 			if (selectedKendaraanId) {
 				const currentVehicle = transformedVehicles.find((v: Vehicle) => v.id === selectedKendaraanId);
 				if (currentVehicle) {
@@ -82,6 +94,35 @@ export default function VehicleSelector() {
 			if (vehicle) {
 				setCurrentKm(vehicle.currentKm || 0);
 			}
+		}
+	};
+
+	const handleDeleteVehicle = (vehicleId: number) => {
+		console.log('Delete button clicked for vehicle:', vehicleId);
+		setDeleteConfirm(vehicleId);
+	};
+
+	const confirmDeleteVehicle = async () => {
+		if (!deleteConfirm) return;
+
+		try {
+			const response = await fetch(`/api/vehicles/${deleteConfirm}`, {
+				method: 'DELETE',
+			});
+
+			if (response.ok) {
+				console.log('Vehicle deleted successfully');
+				setDeleteConfirm(null);
+				await fetchVehicles();
+
+				// If we deleted the currently selected vehicle, reset selection
+				if (deleteConfirm === selectedKendaraanId) {
+					setSelectedKendaraanId(0);
+					setCurrentKm(0);
+				}
+			}
+		} catch (error) {
+			console.error('Error deleting vehicle:', error);
 		}
 	};
 
@@ -146,15 +187,15 @@ export default function VehicleSelector() {
 
 	const currentVehicle = vehicles.find((v) => v.id === selectedKendaraanId);
 
+	// Debugging: Log when component renders and what currentVehicle is
+	console.log('VehicleSelector render - currentVehicle:', currentVehicle);
+	console.log('VehicleSelector render - selectedKendaraanId:', selectedKendaraanId);
+
 	return (
-		<Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 3 }}>
+		<Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 3, flexWrap: 'wrap' }}>
 			<FormControl sx={{ minWidth: 200 }}>
 				<InputLabel>Vehicle</InputLabel>
-				<Select
-					value={selectedKendaraanId || ''}
-					label="Vehicle"
-					onChange={handleVehicleChange}
-				>
+				<Select value={selectedKendaraanId || ''} label="Vehicle" onChange={handleVehicleChange}>
 					{vehicles.map((vehicle) => (
 						<MenuItem key={vehicle.id} value={vehicle.id}>
 							{vehicle.nama} {vehicle.plat ? `(${vehicle.plat})` : ''}
@@ -168,13 +209,17 @@ export default function VehicleSelector() {
 
 			{currentVehicle && (
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-					<Box sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
-						Current: {currentVehicle.currentKm?.toLocaleString() || 0} km
-					</Box>
+					<Box sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>Current: {currentVehicle.currentKm?.toLocaleString() || 0} km</Box>
 					<Button size="small" variant="outlined" onClick={() => setShowKmDialog(true)}>
 						Update KM
 					</Button>
 				</Box>
+			)}
+
+			{currentVehicle && (
+				<Button size="small" variant="outlined" onClick={() => handleDeleteVehicle(currentVehicle.id)} sx={{ ml: 1 }}>
+					DELETE
+				</Button>
 			)}
 
 			<Dialog open={showKmDialog} onClose={() => setShowKmDialog(false)} maxWidth="xs" fullWidth>
@@ -254,6 +299,19 @@ export default function VehicleSelector() {
 					<Button onClick={() => setShowAddDialog(false)}>Batal</Button>
 					<Button onClick={handleAddVehicle} variant="contained" disabled={!newVehicle.nama}>
 						Tambah
+					</Button>
+				</DialogActions>
+			</Dialog>
+
+			<Dialog open={deleteConfirm !== null} onClose={() => setDeleteConfirm(null)}>
+				<DialogTitle>Confirm Delete</DialogTitle>
+				<DialogContent>
+					<Typography>Are you sure you want to delete this vehicle and all its service items?</Typography>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+					<Button onClick={confirmDeleteVehicle} color="error" variant="contained">
+						Delete
 					</Button>
 				</DialogActions>
 			</Dialog>

@@ -57,7 +57,7 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 			setLoading(true);
 			const response = await fetch(`/api/service-items?kendaraanId=${kendaraanId}&order=${sortBy}`);
 			const data = await response.json();
-			const transformedItems = (data.results || []).map((item: any) => ({
+			const transformedItems = (data.results || []).map((item: Record<string, unknown>) => ({
 				id: item.id,
 				kendaraanId: item.kendaraan_id,
 				nama: item.nama,

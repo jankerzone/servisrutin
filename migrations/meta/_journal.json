@@ -15,6 +15,13 @@
       "when": 1761057603790,
       "tag": "0001_rapid_vision",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1761090795821,
+      "tag": "0002_nervous_hellcat",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,7 @@ import { create } from 'zustand';
 interface KendaraanStore {
 	selectedKendaraanId: number | null;
 	currentKm: number;
-	setSelectedKendaraanId: (id: number) => void;
+	setSelectedKendaraanId: (id: number | null) => void;
 	setCurrentKm: (km: number) => void;
 }
 

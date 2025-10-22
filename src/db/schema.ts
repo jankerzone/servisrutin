@@ -19,3 +19,14 @@ export const serviceItems = sqliteTable('service_items', {
 	lastKm: integer('last_km'),
 	lastDate: text('last_date'), // "2025-07-19"
 });
+
+export const serviceHistory = sqliteTable('service_history', {
+	id: integer('id').primaryKey(),
+	kendaraanId: integer('kendaraan_id').references(() => kendaraan.id),
+	serviceDate: text('service_date').notNull(), // "2025-07-19"
+	odometerKm: integer('odometer_km').notNull(),
+	serviceItemIds: text('service_item_ids').notNull(), // JSON array of service item IDs
+	totalCost: integer('total_cost'), // Optional, in rupiah
+	notes: text('notes'),
+	createdAt: text('created_at').notNull(), // ISO timestamp
+});
