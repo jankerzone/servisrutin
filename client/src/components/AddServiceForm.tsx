@@ -12,18 +12,20 @@ import {
 	FormControlLabel,
 	Radio,
 	Box,
+	Typography,
 } from '@mui/material';
 
 interface AddServiceFormProps {
 	open: boolean;
 	onClose: () => void;
 	kendaraanId: number;
+	currentKm?: number;
 	onSuccess?: () => void;
 }
 
 type IntervalType = 'KM' | 'DAY' | 'MONTH' | 'YEAR' | 'WHICHEVER_FIRST' | 'NONE';
 
-export default function AddServiceForm({ open, onClose, kendaraanId, onSuccess }: AddServiceFormProps) {
+export default function AddServiceForm({ open, onClose, kendaraanId, currentKm = 0, onSuccess }: AddServiceFormProps) {
 	const [nama, setNama] = useState('');
 	const [intervalType, setIntervalType] = useState<IntervalType>('KM');
 	const [intervalValue, setIntervalValue] = useState('');
@@ -35,6 +37,7 @@ export default function AddServiceForm({ open, onClose, kendaraanId, onSuccess }
 			const response = await fetch('/api/service-items', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
 				body: JSON.stringify({
 					kendaraanId,
 					nama,
@@ -109,14 +112,21 @@ export default function AddServiceForm({ open, onClose, kendaraanId, onSuccess }
 						/>
 					)}
 
-					<TextField
-						label="Last Kilometer"
-						type="number"
-						value={lastKm}
-						onChange={(e) => setLastKm(e.target.value)}
-						fullWidth
-						placeholder="e.g., 20000"
-					/>
+					<Box>
+						<TextField
+							label="Last Kilometer"
+							type="number"
+							value={lastKm}
+							onChange={(e) => setLastKm(e.target.value)}
+							fullWidth
+							placeholder={currentKm > 0 ? currentKm.toString() : 'e.g., 20000'}
+						/>
+						{currentKm > 0 && (
+							<Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+								Vehicle's current odometer: {currentKm.toLocaleString()} km
+							</Typography>
+						)}
+					</Box>
 
 					<TextField
 						label="Last Service Date"

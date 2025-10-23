@@ -47,7 +47,7 @@ export default function TambahServis({ open, onClose, kendaraanId, currentKm, on
 	const fetchServiceItems = async () => {
 		try {
 			setLoading(true);
-			const response = await fetch(`/api/service-items?kendaraanId=${kendaraanId}`);
+			const response = await fetch(`/api/service-items?kendaraanId=${kendaraanId}`, { credentials: 'include' });
 			if (response.ok) {
 				const data = await response.json();
 				setServiceItems(data.results || []);
@@ -86,6 +86,7 @@ export default function TambahServis({ open, onClose, kendaraanId, currentKm, on
 			const response = await fetch('/api/service-history', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
 				body: JSON.stringify({
 					kendaraanId,
 					serviceDate,

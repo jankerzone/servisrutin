@@ -1,7 +1,23 @@
 import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
 
+export const users = sqliteTable('users', {
+	id: integer('id').primaryKey(),
+	email: text('email').notNull().unique(),
+	passwordHash: text('password_hash').notNull(),
+	name: text('name'),
+	createdAt: text('created_at').notNull(),
+});
+
+export const sessions = sqliteTable('sessions', {
+	id: text('id').primaryKey(),
+	userId: integer('user_id').notNull().references(() => users.id),
+	expiresAt: text('expires_at').notNull(),
+	createdAt: text('created_at').notNull(),
+});
+
 export const kendaraan = sqliteTable('kendaraan', {
 	id: integer('id').primaryKey(),
+	userId: integer('user_id').notNull().references(() => users.id),
 	nama: text('nama').notNull(),
 	tipe: text('tipe'), // "Motor" or "Mobil"
 	plat: text('plat'),

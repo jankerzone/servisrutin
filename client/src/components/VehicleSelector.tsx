@@ -13,6 +13,8 @@ import {
 	DialogContent,
 	DialogActions,
 	Typography,
+	Card,
+	CardContent,
 } from '@mui/material';
 import { useKendaraanStore } from '../store/useKendaraanStore';
 
@@ -50,7 +52,7 @@ export default function VehicleSelector() {
 
 	const fetchVehicles = async () => {
 		try {
-			const response = await fetch('/api/vehicles');
+			const response = await fetch('/api/vehicles', { credentials: 'include' });
 			const data = await response.json();
 			const transformedVehicles = (data.results || []).map(
 				(v: {
@@ -108,17 +110,47 @@ export default function VehicleSelector() {
 		try {
 			const response = await fetch(`/api/vehicles/${deleteConfirm}`, {
 				method: 'DELETE',
+				credentials: 'include',
 			});
 
 			if (response.ok) {
 				console.log('Vehicle deleted successfully');
+				const wasSelectedVehicle = deleteConfirm === selectedKendaraanId;
 				setDeleteConfirm(null);
-				await fetchVehicles();
+				
+				// Fetch updated vehicle list
+				const updatedResponse = await fetch('/api/vehicles', { credentials: 'include' });
+				const updatedData = await updatedResponse.json();
+				const updatedVehicles = (updatedData.results || []).map(
+					(v: {
+						id: number;
+						nama: string;
+						tipe: string | null;
+						plat: string | null;
+						tahun: number | null;
+						bulan_pajak: number | null;
+						current_km: number | null;
+					}) => ({
+						id: v.id,
+						nama: v.nama,
+						tipe: v.tipe,
+						plat: v.plat,
+						tahun: v.tahun,
+						bulanPajak: v.bulan_pajak,
+						currentKm: v.current_km,
+					}),
+				);
+				setVehicles(updatedVehicles);
 
-				// If we deleted the currently selected vehicle, reset selection
-				if (deleteConfirm === selectedKendaraanId) {
-					setSelectedKendaraanId(0);
-					setCurrentKm(0);
+				// If we deleted the currently selected vehicle, select first available or null
+				if (wasSelectedVehicle) {
+					if (updatedVehicles.length > 0) {
+						setSelectedKendaraanId(updatedVehicles[0].id);
+						setCurrentKm(updatedVehicles[0].currentKm || 0);
+					} else {
+						setSelectedKendaraanId(null);
+						setCurrentKm(0);
+					}
 				}
 			}
 		} catch (error) {
@@ -142,11 +174,14 @@ export default function VehicleSelector() {
 			const response = await fetch('/api/vehicles', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
 				body: JSON.stringify(payload),
 			});
 
-			if (response.ok) {
-				const data = await response.json();
+			const data = await response.json();
+			console.log('Add vehicle response:', data);
+
+			if (response.ok && data.success) {
 				setShowAddDialog(false);
 				setNewVehicle({
 					nama: '',
@@ -157,10 +192,16 @@ export default function VehicleSelector() {
 					currentKm: '',
 				});
 				await fetchVehicles();
-				setSelectedKendaraanId(data.result.id);
+				if (data.result?.meta?.last_row_id) {
+					setSelectedKendaraanId(data.result.meta.last_row_id);
+				}
+			} else {
+				console.error('Failed to add vehicle:', data);
+				window.alert(`Failed to add vehicle: ${data.error || 'Unknown error'}`);
 			}
 		} catch (error) {
 			console.error('Error adding vehicle:', error);
+			window.alert(`Error adding vehicle: ${error}`);
 		}
 	};
 
@@ -171,6 +212,7 @@ export default function VehicleSelector() {
 			const response = await fetch(`/api/vehicles/${selectedKendaraanId}/km`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
 				body: JSON.stringify({ currentKm: parseInt(kmInput) }),
 			});
 
@@ -192,47 +234,90 @@ export default function VehicleSelector() {
 	console.log('VehicleSelector render - selectedKendaraanId:', selectedKendaraanId);
 
 	return (
-		<Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 3, flexWrap: 'wrap' }}>
-			<FormControl sx={{ minWidth: 200 }}>
-				<InputLabel>Vehicle</InputLabel>
-				<Select value={selectedKendaraanId || ''} label="Vehicle" onChange={handleVehicleChange}>
-					{vehicles.map((vehicle) => (
-						<MenuItem key={vehicle.id} value={vehicle.id}>
-							{vehicle.nama} {vehicle.plat ? `(${vehicle.plat})` : ''}
-						</MenuItem>
-					))}
-					<MenuItem value={-1} sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-						+ Tambahkan Kendaraan Baru
-					</MenuItem>
-				</Select>
-			</FormControl>
+		<Box sx={{ mb: 4 }}>
+			<Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', mb: 4 }}>
+				<CardContent sx={{ p: 3 }}>
+					<Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+						<FormControl sx={{ minWidth: 250, flex: 1 }}>
+							<InputLabel>Select Vehicle</InputLabel>
+							<Select 
+								value={selectedKendaraanId || ''} 
+								label="Select Vehicle" 
+								onChange={handleVehicleChange}
+								sx={{ fontWeight: 500 }}
+							>
+								{vehicles.map((vehicle) => (
+									<MenuItem key={vehicle.id} value={vehicle.id} sx={{ fontWeight: 500 }}>
+										🚗 {vehicle.nama} {vehicle.plat ? `(${vehicle.plat})` : ''}
+									</MenuItem>
+								))}
+								<MenuItem value={-1} sx={{ color: 'primary.main', fontWeight: 600, bgcolor: 'primary.light', opacity: 0.1 }}>
+									➕ Add New Vehicle
+								</MenuItem>
+							</Select>
+						</FormControl>
 
-			{currentVehicle && (
-				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-					<Box sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>Current: {currentVehicle.currentKm?.toLocaleString() || 0} km</Box>
-					<Button size="small" variant="outlined" onClick={() => setShowKmDialog(true)}>
-						Update KM
-					</Button>
-				</Box>
-			)}
+						{currentVehicle && (
+							<Box sx={{ 
+								display: 'flex', 
+								alignItems: 'center', 
+								gap: 2,
+								bgcolor: 'background.default',
+								px: 3,
+								py: 1.5,
+								borderRadius: 2,
+								flex: 1
+							}}>
+								<Box>
+									<Typography variant="caption" color="text.secondary" display="block">
+										Current Odometer
+									</Typography>
+									<Typography variant="h6" fontWeight={700} color="primary.main">
+										{currentVehicle.currentKm?.toLocaleString() || 0} km
+									</Typography>
+								</Box>
+								<Button 
+									size="small" 
+									variant="contained" 
+									onClick={() => setShowKmDialog(true)}
+									sx={{ ml: 'auto' }}
+								>
+									Update
+								</Button>
+							</Box>
+						)}
 
-			{currentVehicle && (
-				<Button size="small" variant="outlined" onClick={() => handleDeleteVehicle(currentVehicle.id)} sx={{ ml: 1 }}>
-					DELETE
-				</Button>
-			)}
+						{currentVehicle && (
+							<Button 
+								size="small" 
+								variant="outlined" 
+								color="error"
+								onClick={() => handleDeleteVehicle(currentVehicle.id)}
+							>
+								Delete Vehicle
+							</Button>
+						)}
+					</Box>
+				</CardContent>
+			</Card>
 
 			<Dialog open={showKmDialog} onClose={() => setShowKmDialog(false)} maxWidth="xs" fullWidth>
 				<DialogTitle>Update Current Odometer</DialogTitle>
 				<DialogContent>
+					{currentVehicle && (
+						<Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
+							Current odometer: {currentVehicle.currentKm?.toLocaleString() || 0} km
+						</Typography>
+					)}
 					<TextField
 						autoFocus
 						margin="dense"
-						label="Current KM"
+						label="New Odometer Reading (km)"
 						type="number"
 						fullWidth
 						value={kmInput}
 						onChange={(e) => setKmInput(e.target.value)}
+						placeholder={currentVehicle?.currentKm?.toString() || '0'}
 					/>
 				</DialogContent>
 				<DialogActions>

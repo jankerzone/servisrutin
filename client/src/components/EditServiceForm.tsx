@@ -55,6 +55,7 @@ export default function EditServiceForm({ open, onClose, item, onSuccess }: Edit
 			const response = await fetch(`/api/service-items/${item.id}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
 				body: JSON.stringify({
 					nama,
 					intervalType,

@@ -40,3 +40,4 @@ yarn-error.log*
 
 # Drizzle
 migrations/.wrangler/
+API_DOCUMENTATION.md

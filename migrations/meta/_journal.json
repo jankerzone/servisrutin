@@ -22,6 +22,13 @@
       "when": 1761090795821,
       "tag": "0002_nervous_hellcat",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1761181221653,
+      "tag": "0003_green_big_bertha",
+      "breakpoints": true
     }
   ]
 }

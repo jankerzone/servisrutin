@@ -55,7 +55,7 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 	const fetchServiceItems = async () => {
 		try {
 			setLoading(true);
-			const response = await fetch(`/api/service-items?kendaraanId=${kendaraanId}&order=${sortBy}`);
+			const response = await fetch(`/api/service-items?kendaraanId=${kendaraanId}&order=${sortBy}`, { credentials: 'include' });
 			const data = await response.json();
 			const transformedItems = (data.results || []).map((item: Record<string, unknown>) => ({
 				id: item.id,
@@ -176,6 +176,7 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 		try {
 			const response = await fetch(`/api/service-items/${id}`, {
 				method: 'DELETE',
+				credentials: 'include',
 			});
 
 			if (response.ok) {
@@ -223,42 +224,70 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 				</Alert>
 			</Snackbar>
 
-			<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+			<Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
 				{items.map((item) => {
 				const progress = calculateProgress(item);
 				const color = progress < 50 ? 'success' : progress < 80 ? 'warning' : 'error';
 				
 				return (
-					<Card key={item.id} variant="outlined">
-						<CardContent>
-							<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-								<Typography variant="h6" gutterBottom>
+					<Card key={item.id} elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+						<CardContent sx={{ p: 3 }}>
+							<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+								<Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
 									{item.nama}
 								</Typography>
-								<Box>
-									<IconButton size="small" onClick={() => setEditItem(item)} color="primary">
+								<Box sx={{ display: 'flex', gap: 0.5 }}>
+									<IconButton 
+										size="small" 
+										onClick={() => setEditItem(item)} 
+										sx={{ 
+											bgcolor: 'primary.light',
+											color: 'primary.main',
+											'&:hover': { bgcolor: 'primary.main', color: 'white' }
+										}}
+									>
 										<EditIcon fontSize="small" />
 									</IconButton>
-									<IconButton size="small" onClick={() => setDeleteConfirm(item.id)} color="error">
+									<IconButton 
+										size="small" 
+										onClick={() => setDeleteConfirm(item.id)}
+										sx={{ 
+											bgcolor: 'error.light',
+											color: 'error.main',
+											'&:hover': { bgcolor: 'error.main', color: 'white' }
+										}}
+									>
 										<DeleteIcon fontSize="small" />
 									</IconButton>
 								</Box>
 							</Box>
 							
-							<Typography variant="body2" color="text.secondary" gutterBottom>
-								{getLastInfo(item)}
-							</Typography>
+							<Box sx={{ display: 'flex', gap: 3, mb: 2, flexWrap: 'wrap' }}>
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+									<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main' }} />
+									<Typography variant="body2" color="text.secondary">
+										{getLastInfo(item)}
+									</Typography>
+								</Box>
+								
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+									<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color + '.main' }} />
+									<Typography variant="body2" color="text.secondary">
+										{getDueInfo(item)}
+									</Typography>
+								</Box>
+							</Box>
 							
-							<Typography variant="body2" color="text.secondary" gutterBottom>
-								{getDueInfo(item)}
-							</Typography>
-							
-							<Box sx={{ mt: 2 }}>
-								<Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-									<Typography variant="caption" color="text.secondary">
+							<Box sx={{ mt: 3, bgcolor: 'background.default', p: 2, borderRadius: 2 }}>
+								<Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+									<Typography variant="body2" fontWeight={600} color="text.secondary">
 										Progress
 									</Typography>
-									<Typography variant="caption" color="text.secondary">
+									<Typography 
+										variant="body2" 
+										fontWeight={700}
+										color={progress < 50 ? 'success.main' : progress < 80 ? 'warning.main' : 'error.main'}
+									>
 										{progress.toFixed(0)}%
 									</Typography>
 								</Box>
@@ -266,7 +295,14 @@ export default function ServiceList({ kendaraanId, sortBy = 'nama', currentKm = 
 									variant="determinate" 
 									value={progress} 
 									color={color}
-									sx={{ height: 8, borderRadius: 1 }}
+									sx={{ 
+										height: 12, 
+										borderRadius: 6,
+										bgcolor: 'grey.200',
+										'& .MuiLinearProgress-bar': {
+											borderRadius: 6,
+										}
+									}}
 								/>
 							</Box>
 						</CardContent>

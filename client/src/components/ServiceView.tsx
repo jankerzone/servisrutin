@@ -69,6 +69,7 @@ export default function ServiceView({ kendaraanId, currentKm = 0 }: ServiceViewP
 				open={showForm}
 				onClose={() => setShowForm(false)}
 				kendaraanId={kendaraanId}
+				currentKm={currentKm}
 				onSuccess={handleSuccess}
 			/>
 
