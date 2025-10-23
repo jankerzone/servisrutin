@@ -117,7 +117,7 @@ export default function VehicleSelector() {
 				console.log('Vehicle deleted successfully');
 				const wasSelectedVehicle = deleteConfirm === selectedKendaraanId;
 				setDeleteConfirm(null);
-				
+
 				// Fetch updated vehicle list
 				const updatedResponse = await fetch('/api/vehicles', { credentials: 'include' });
 				const updatedData = await updatedResponse.json();
@@ -240,34 +240,40 @@ export default function VehicleSelector() {
 					<Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
 						<FormControl sx={{ minWidth: 250, flex: 1 }}>
 							<InputLabel>Select Vehicle</InputLabel>
-							<Select 
-								value={selectedKendaraanId || ''} 
-								label="Select Vehicle" 
-								onChange={handleVehicleChange}
-								sx={{ fontWeight: 500 }}
-							>
+							<Select value={selectedKendaraanId || ''} label="Select Vehicle" onChange={handleVehicleChange} sx={{ fontWeight: 500 }}>
 								{vehicles.map((vehicle) => (
 									<MenuItem key={vehicle.id} value={vehicle.id} sx={{ fontWeight: 500 }}>
 										🚗 {vehicle.nama} {vehicle.plat ? `(${vehicle.plat})` : ''}
 									</MenuItem>
 								))}
-								<MenuItem value={-1} sx={{ color: 'primary.main', fontWeight: 600, bgcolor: 'primary.light', opacity: 0.1 }}>
+								<MenuItem
+									value={-1}
+									sx={{
+										color: 'primary.main',
+										fontWeight: 600,
+										bgcolor: 'primary.light',
+										opacity: 0.1,
+										'&:hover': { color: 'primary.dark' },
+									}}
+								>
 									➕ Add New Vehicle
 								</MenuItem>
 							</Select>
 						</FormControl>
 
 						{currentVehicle && (
-							<Box sx={{ 
-								display: 'flex', 
-								alignItems: 'center', 
-								gap: 2,
-								bgcolor: 'background.default',
-								px: 3,
-								py: 1.5,
-								borderRadius: 2,
-								flex: 1
-							}}>
+							<Box
+								sx={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: 2,
+									bgcolor: 'background.default',
+									px: 3,
+									py: 1.5,
+									borderRadius: 2,
+									flex: 1,
+								}}
+							>
 								<Box>
 									<Typography variant="caption" color="text.secondary" display="block">
 										Current Odometer
@@ -276,24 +282,14 @@ export default function VehicleSelector() {
 										{currentVehicle.currentKm?.toLocaleString() || 0} km
 									</Typography>
 								</Box>
-								<Button 
-									size="small" 
-									variant="contained" 
-									onClick={() => setShowKmDialog(true)}
-									sx={{ ml: 'auto' }}
-								>
+								<Button size="small" variant="contained" onClick={() => setShowKmDialog(true)} sx={{ ml: 'auto' }}>
 									Update
 								</Button>
 							</Box>
 						)}
 
 						{currentVehicle && (
-							<Button 
-								size="small" 
-								variant="outlined" 
-								color="error"
-								onClick={() => handleDeleteVehicle(currentVehicle.id)}
-							>
+							<Button size="small" variant="outlined" color="error" onClick={() => handleDeleteVehicle(currentVehicle.id)}>
 								Delete Vehicle
 							</Button>
 						)}
