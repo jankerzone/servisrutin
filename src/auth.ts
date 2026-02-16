@@ -87,20 +87,16 @@ export async function createSession(db: D1Database, userId: number): Promise<str
 
 export async function getSessionUser(db: D1Database, sessionId: string | undefined): Promise<any> {
 	if (!sessionId) {
-		console.log('getSessionUser - no sessionId provided');
 		return null;
 	}
 
-	console.log('getSessionUser - looking up session:', sessionId);
-
 	const result = await db
 		.prepare(
-			'SELECT users.* FROM users JOIN sessions ON users.id = sessions.user_id WHERE sessions.id = ? AND sessions.expires_at > datetime("now")',
+			'SELECT users.id, users.email, users.name FROM users JOIN sessions ON users.id = sessions.user_id WHERE sessions.id = ? AND sessions.expires_at > datetime("now")',
 		)
 		.bind(sessionId)
 		.first();
 
-	console.log('getSessionUser - result:', result);
 	return result;
 }
 
@@ -110,23 +106,14 @@ export async function deleteSession(db: D1Database, sessionId: string): Promise<
 
 // Middleware for authentication
 export async function authMiddleware(c: Context<{ Bindings: Bindings }>, next: () => Promise<void>) {
-	// Log all cookies
-	const allCookies = c.req.header('Cookie');
-	console.log('Auth middleware - Cookie header:', allCookies);
-	
 	const sessionId = getCookie(c, 'session_id');
-	console.log('Auth middleware - sessionId:', sessionId);
-	
 	const user = await getSessionUser(c.env.DB, sessionId);
-	console.log('Auth middleware - user:', user);
 
 	if (!user) {
-		console.error('Auth middleware - No user found');
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 
 	c.set('user', user);
-	console.log('Auth middleware - User set in context');
 	await next();
 }
 

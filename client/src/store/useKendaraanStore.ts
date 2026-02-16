@@ -8,7 +8,7 @@ interface KendaraanStore {
 }
 
 export const useKendaraanStore = create<KendaraanStore>((set) => ({
-	selectedKendaraanId: 1,
+	selectedKendaraanId: null,
 	currentKm: 0,
 	setSelectedKendaraanId: (id) => set({ selectedKendaraanId: id }),
 	setCurrentKm: (km) => set({ currentKm: km }),

@@ -12,8 +12,8 @@ interface AuthStore {
 	setUser: (user: User | null) => void;
 	setLoading: (loading: boolean) => void;
 	checkAuth: () => Promise<void>;
-	login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-	signup: (email: string, password: string, name?: string) => Promise<{ success: boolean; error?: string }>;
+	login: (email: string, password: string, turnstileToken: string) => Promise<{ success: boolean; error?: string }>;
+	signup: (email: string, password: string, name?: string, turnstileToken?: string) => Promise<{ success: boolean; error?: string }>;
 	logout: () => Promise<void>;
 }
 
@@ -34,13 +34,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
 			set({ user: null, loading: false });
 		}
 	},
-	login: async (email: string, password: string) => {
+	login: async (email: string, password: string, turnstileToken: string) => {
 		try {
 			const response = await fetch('/api/auth/login', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ email, password }),
+				body: JSON.stringify({ email, password, turnstileToken }),
 			});
 
 			const data = await response.json();
@@ -49,20 +49,20 @@ export const useAuthStore = create<AuthStore>((set) => ({
 				set({ user: data.user });
 				return { success: true };
 			} else {
-				return { success: false, error: data.error || 'Login failed' };
+				return { success: false, error: data.error || 'Login gagal' };
 			}
 		} catch (error) {
 			console.error('Error during login:', error);
-			return { success: false, error: 'Network error' };
+			return { success: false, error: 'Kesalahan jaringan' };
 		}
 	},
-	signup: async (email: string, password: string, name?: string) => {
+	signup: async (email: string, password: string, name?: string, turnstileToken?: string) => {
 		try {
 			const response = await fetch('/api/auth/signup', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ email, password, name }),
+				body: JSON.stringify({ email, password, name, turnstileToken }),
 			});
 
 			const data = await response.json();
@@ -71,11 +71,11 @@ export const useAuthStore = create<AuthStore>((set) => ({
 				set({ user: data.user });
 				return { success: true };
 			} else {
-				return { success: false, error: data.error || 'Signup failed' };
+				return { success: false, error: data.error || 'Pendaftaran gagal' };
 			}
 		} catch (error) {
 			console.error('Error during signup:', error);
-			return { success: false, error: 'Network error' };
+			return { success: false, error: 'Kesalahan jaringan' };
 		}
 	},
 	logout: async () => {

@@ -1,17 +1,17 @@
 import { useEffect } from 'react';
-import { ThemeProvider, CssBaseline, Container, AppBar, Toolbar, Typography, CircularProgress, Box, Button } from '@mui/material';
-import ServiceView from './components/ServiceView';
-import VehicleSelector from './components/VehicleSelector';
-import Auth from './components/Auth';
-import { useKendaraanStore } from './store/useKendaraanStore';
-import { useAuthStore } from './store/useAuthStore';
-import { theme } from './theme';
-import './App.css';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { useAuthStore } from '@/store/useAuthStore';
+import { Loader2 } from 'lucide-react';
+import AppLayout from '@/components/layout/AppLayout';
+import AuthPage from '@/components/auth/AuthPage';
+import DashboardPage from '@/components/dashboard/DashboardPage';
+import VehiclesPage from '@/components/vehicles/VehiclesPage';
+import VehicleDetailPage from '@/components/vehicles/VehicleDetailPage';
+import HistoryPage from '@/components/history/HistoryPage';
 
-function App() {
-	const selectedKendaraanId = useKendaraanStore((state) => state.selectedKendaraanId);
-	const currentKm = useKendaraanStore((state) => state.currentKm);
-	const { user, loading, checkAuth, logout } = useAuthStore();
+function AuthGuard({ children }: { children: React.ReactNode }) {
+	const { user, loading, checkAuth } = useAuthStore();
 
 	useEffect(() => {
 		checkAuth();
@@ -19,57 +19,68 @@ function App() {
 
 	if (loading) {
 		return (
-			<ThemeProvider theme={theme}>
-				<CssBaseline />
-				<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-					<CircularProgress />
-				</Box>
-			</ThemeProvider>
+			<div className="flex h-screen items-center justify-center">
+				<Loader2 className="h-8 w-8 animate-spin text-primary" />
+			</div>
 		);
 	}
 
 	if (!user) {
+		return <Navigate to="/login" replace />;
+	}
+
+	return <>{children}</>;
+}
+
+function GuestGuard({ children }: { children: React.ReactNode }) {
+	const { user, loading, checkAuth } = useAuthStore();
+
+	useEffect(() => {
+		checkAuth();
+	}, [checkAuth]);
+
+	if (loading) {
 		return (
-			<ThemeProvider theme={theme}>
-				<CssBaseline />
-				<Auth />
-			</ThemeProvider>
+			<div className="flex h-screen items-center justify-center">
+				<Loader2 className="h-8 w-8 animate-spin text-primary" />
+			</div>
 		);
 	}
 
-	return (
-		<ThemeProvider theme={theme}>
-			<CssBaseline />
-			<Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-				<AppBar position="static" elevation={0}>
-					<Toolbar>
-						<Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
-							🚗 Servis Rutin
-						</Typography>
-						<Typography variant="body2" sx={{ mr: 2, px: 2, py: 0.5, bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 2 }}>
-							{user.name || user.email}
-						</Typography>
-						<Button 
-							color="inherit" 
-							onClick={logout}
-							sx={{ 
-								bgcolor: 'rgba(255,255,255,0.1)',
-								'&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
-							}}
-						>
-							Logout
-						</Button>
-					</Toolbar>
-				</AppBar>
+	if (user) {
+		return <Navigate to="/" replace />;
+	}
 
-				<Container maxWidth="lg" sx={{ py: 4 }}>
-					<VehicleSelector />
-
-					{selectedKendaraanId && selectedKendaraanId > 0 && <ServiceView kendaraanId={selectedKendaraanId} currentKm={currentKm} />}
-				</Container>
-			</Box>
-		</ThemeProvider>
-	);
+	return <>{children}</>;
 }
 
-export default App;
+export default function App() {
+	return (
+		<BrowserRouter>
+			<Toaster position="top-right" richColors />
+			<Routes>
+				<Route
+					path="/login"
+					element={
+						<GuestGuard>
+							<AuthPage />
+						</GuestGuard>
+					}
+				/>
+				<Route
+					element={
+						<AuthGuard>
+							<AppLayout />
+						</AuthGuard>
+					}
+				>
+					<Route index element={<DashboardPage />} />
+					<Route path="kendaraan" element={<VehiclesPage />} />
+					<Route path="kendaraan/:id" element={<VehicleDetailPage />} />
+					<Route path="riwayat" element={<HistoryPage />} />
+				</Route>
+				<Route path="*" element={<Navigate to="/" replace />} />
+			</Routes>
+		</BrowserRouter>
+	);
+}
