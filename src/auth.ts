@@ -1,9 +1,6 @@
 import { Context } from 'hono';
 import { getCookie } from 'hono/cookie';
-
-type Bindings = {
-	DB: D1Database;
-};
+import { Bindings } from './types';
 
 // Password hashing using Web Crypto API (available in Cloudflare Workers)
 export async function hashPassword(password: string): Promise<string> {
@@ -17,7 +14,7 @@ export async function hashPassword(password: string): Promise<string> {
 		{
 			name: 'PBKDF2',
 			salt: salt,
-			iterations: 100000,
+			iterations: 600000,
 			hash: 'SHA-256',
 		},
 		key,
@@ -48,7 +45,7 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 		{
 			name: 'PBKDF2',
 			salt: salt,
-			iterations: 100000,
+			iterations: 600000,
 			hash: 'SHA-256',
 		},
 		key,
@@ -105,7 +102,7 @@ export async function deleteSession(db: D1Database, sessionId: string): Promise<
 }
 
 // Middleware for authentication
-export async function authMiddleware(c: Context<{ Bindings: Bindings }>, next: () => Promise<void>) {
+export async function authMiddleware(c: Context<{ Bindings: Bindings, Variables: { user: any } }>, next: () => Promise<void>) {
 	const sessionId = getCookie(c, 'session_id');
 	const user = await getSessionUser(c.env.DB, sessionId);
 

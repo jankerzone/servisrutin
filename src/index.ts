@@ -2,11 +2,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { hashPassword, verifyPassword, createSession, getSessionUser, deleteSession, authMiddleware, getAuthUser } from './auth';
+import { Bindings } from './types';
 
-type Bindings = {
-	DB: D1Database;
-	TURNSTILE_SECRET_KEY: string;
-};
 
 async function verifyTurnstile(token: string, secretKey: string, ip?: string): Promise<boolean> {
 	const formData = new URLSearchParams();
@@ -23,7 +20,7 @@ async function verifyTurnstile(token: string, secretKey: string, ip?: string): P
 	return outcome.success;
 }
 
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<{ Bindings: Bindings, Variables: { user: any } }>();
 
 // Enable CORS with credentials
 app.use(
