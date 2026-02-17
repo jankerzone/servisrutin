@@ -9,6 +9,7 @@ import DashboardPage from '@/components/dashboard/DashboardPage';
 import VehiclesPage from '@/components/vehicles/VehiclesPage';
 import VehicleDetailPage from '@/components/vehicles/VehicleDetailPage';
 import HistoryPage from '@/components/history/HistoryPage';
+import ProfilePage from '@/components/profile/ProfilePage';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
 	const { user, loading, checkAuth } = useAuthStore();
@@ -78,6 +79,7 @@ export default function App() {
 					<Route path="kendaraan" element={<VehiclesPage />} />
 					<Route path="kendaraan/:id" element={<VehicleDetailPage />} />
 					<Route path="riwayat" element={<HistoryPage />} />
+					<Route path="profil" element={<ProfilePage />} />
 				</Route>
 				<Route path="*" element={<Navigate to="/" replace />} />
 			</Routes>

@@ -107,7 +107,7 @@ export async function getSessionUser(db: D1Database, sessionId: string | undefin
 
 	const result = await db
 		.prepare(
-			'SELECT users.id, users.email, users.name FROM users JOIN sessions ON users.id = sessions.user_id WHERE sessions.id = ? AND sessions.expires_at > datetime("now")',
+			'SELECT users.id, users.email, users.name, users.avatar_url FROM users JOIN sessions ON users.id = sessions.user_id WHERE sessions.id = ? AND sessions.expires_at > datetime("now")',
 		)
 		.bind(sessionId)
 		.first();

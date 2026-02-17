@@ -1,6 +1,6 @@
 import { Menu, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import ThemeToggle from './ThemeToggle';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
 	onMenuClick: () => void;
@@ -18,6 +19,7 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
 	const { user, logout } = useAuthStore();
+	const navigate = useNavigate();
 
 	const initials = user?.name
 		? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -37,6 +39,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
 				<DropdownMenuTrigger asChild>
 					<Button variant="ghost" className="relative h-9 w-9 rounded-full">
 						<Avatar className="h-9 w-9">
+							<AvatarImage src={user?.avatarUrl || ''} alt={user?.name || ''} />
 							<AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
 								{initials}
 							</AvatarFallback>
@@ -51,7 +54,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
 						</div>
 					</DropdownMenuLabel>
 					<DropdownMenuSeparator />
-					<DropdownMenuItem disabled>
+					<DropdownMenuItem onClick={() => navigate('/profil')}>
 						<User className="mr-2 h-4 w-4" />
 						<span>Profil</span>
 					</DropdownMenuItem>

@@ -166,10 +166,77 @@ app.get('/api/auth/me', async (c) => {
 			return c.json({ user: null });
 		}
 
-		return c.json({ user: { id: user.id, email: user.email, name: user.name } });
+		return c.json({ user: { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatar_url } });
 	} catch (error) {
 		console.error('Error fetching current user:', error);
 		return c.json({ user: null }, 500);
+	}
+});
+
+// Update profile (Name, Avatar)
+app.put('/api/profile', async (c) => {
+	try {
+		const sessionId = getCookie(c, 'session_id');
+		const user = await getSessionUser(c.env.DB, sessionId);
+
+		if (!user) {
+			return c.json({ error: 'Unauthorized' }, 401);
+		}
+
+		const body = await c.req.json();
+		const { name, avatarUrl } = body;
+
+		await c.env.DB.prepare('UPDATE users SET name = ?, avatar_url = ? WHERE id = ?')
+			.bind(name || null, avatarUrl || null, user.id)
+			.run();
+
+		return c.json({ success: true, user: { ...user, name, avatarUrl } });
+	} catch (error) {
+		return c.json({ success: false, error: String(error) }, 500);
+	}
+});
+
+// Change password
+app.put('/api/profile/password', async (c) => {
+	try {
+		const sessionId = getCookie(c, 'session_id');
+		const user = await getSessionUser(c.env.DB, sessionId); // Note: getSessionUser in auth.ts might need to return password_hash to verify old password, or we query it here.
+
+		if (!user) {
+			return c.json({ error: 'Unauthorized' }, 401);
+		}
+
+		const body = await c.req.json();
+		const { oldPassword, newPassword } = body;
+
+		if (!oldPassword || !newPassword) {
+			return c.json({ error: 'Both old and new passwords are required' }, 400);
+		}
+
+		if (newPassword.length < 6) {
+			return c.json({ error: 'New password must be at least 6 characters long' }, 400);
+		}
+
+		// Re-fetch user to get password hash (getSessionUser usually returns minimal info)
+		const fullUser = await c.env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(user.id).first();
+
+		if (!fullUser) {
+			return c.json({ error: 'User not found' }, 404);
+		}
+
+		const isValid = await verifyPassword(oldPassword, fullUser.password_hash as string);
+
+		if (!isValid) {
+			return c.json({ error: 'Incorrect old password' }, 401);
+		}
+
+		const newHash = await hashPassword(newPassword);
+
+		await c.env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(newHash, user.id).run();
+
+		return c.json({ success: true });
+	} catch (error) {
+		return c.json({ success: false, error: String(error) }, 500);
 	}
 });
 
