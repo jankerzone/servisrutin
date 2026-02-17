@@ -3,6 +3,9 @@ import { getCookie } from 'hono/cookie';
 import { Bindings } from './types';
 
 // Password hashing using Web Crypto API (available in Cloudflare Workers)
+const LEGACY_ITERATIONS = 100000;
+const CURRENT_ITERATIONS = 600000;
+
 export async function hashPassword(password: string): Promise<string> {
 	const encoder = new TextEncoder();
 	const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -14,7 +17,7 @@ export async function hashPassword(password: string): Promise<string> {
 		{
 			name: 'PBKDF2',
 			salt: salt,
-			iterations: 600000,
+			iterations: CURRENT_ITERATIONS,
 			hash: 'SHA-256',
 		},
 		key,
@@ -29,11 +32,26 @@ export async function hashPassword(password: string): Promise<string> {
 		.map((b) => b.toString(16).padStart(2, '0'))
 		.join('');
 
-	return `${saltHex}:${hashHex}`;
+	return `${saltHex}:${CURRENT_ITERATIONS}:${hashHex}`;
 }
 
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-	const [saltHex, hashHex] = hashedPassword.split(':');
+export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+	const parts = storedHash.split(':');
+	let saltHex: string, hashHex: string, iterations: number;
+
+	if (parts.length === 3) {
+		// New format: salt:iterations:hash
+		[saltHex, , hashHex] = parts;
+		iterations = parseInt(parts[1], 10);
+	} else if (parts.length === 2) {
+		// Legacy format: salt:hash (assumes 100,000 iterations)
+		[saltHex, hashHex] = parts;
+		iterations = LEGACY_ITERATIONS;
+	} else {
+		// Invalid format
+		return false;
+	}
+
 	const salt = new Uint8Array(saltHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)));
 
 	const encoder = new TextEncoder();
@@ -45,7 +63,7 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 		{
 			name: 'PBKDF2',
 			salt: salt,
-			iterations: 600000,
+			iterations: iterations,
 			hash: 'SHA-256',
 		},
 		key,
