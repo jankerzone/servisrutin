@@ -4,7 +4,7 @@ import { Bindings } from './types';
 
 // Password hashing using Web Crypto API (available in Cloudflare Workers)
 const LEGACY_ITERATIONS = 100000;
-const CURRENT_ITERATIONS = 600000;
+const CURRENT_ITERATIONS = 100000;
 
 export async function hashPassword(password: string): Promise<string> {
 	const encoder = new TextEncoder();
