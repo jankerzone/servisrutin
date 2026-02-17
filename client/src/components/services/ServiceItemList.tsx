@@ -38,6 +38,27 @@ function calculateProgress(item: ServiceItem, currentKm: number): number {
 		if (item.intervalType === 'YEAR') intervalInDays *= 365;
 		return Math.min(Math.max((daysSinceLast / intervalInDays) * 100, 0), 100);
 	}
+	if (item.intervalType === 'WHICHEVER_FIRST') {
+		let progressKm = 0;
+		let progressTime = 0;
+
+		if (item.lastKm != null && item.intervalValue) {
+			const kmSinceLast = currentKm - item.lastKm;
+			progressKm = Math.min(Math.max((kmSinceLast / item.intervalValue) * 100, 0), 100);
+		}
+
+		if (item.lastDate && item.timeIntervalValue && item.timeIntervalUnit) {
+			const lastDate = new Date(item.lastDate);
+			const now = new Date();
+			const daysSinceLast = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+			let intervalInDays = item.timeIntervalValue;
+			if (item.timeIntervalUnit === 'MONTH') intervalInDays *= 30;
+			if (item.timeIntervalUnit === 'YEAR') intervalInDays *= 365;
+			progressTime = Math.min(Math.max((daysSinceLast / intervalInDays) * 100, 0), 100);
+		}
+
+		return Math.max(progressKm, progressTime);
+	}
 	return 0;
 }
 
@@ -55,11 +76,49 @@ function getDueInfo(item: ServiceItem): string {
 		if (item.intervalType === 'YEAR') dueDate.setFullYear(dueDate.getFullYear() + item.intervalValue);
 		return `Target: ${formatDate(dueDate.toISOString())}`;
 	}
+	if (item.intervalType === 'WHICHEVER_FIRST') {
+		const dueInfoParts = [];
+
+		if (item.lastKm != null && item.intervalValue) {
+			const dueKm = item.lastKm + item.intervalValue;
+			dueInfoParts.push(`${dueKm.toLocaleString()} km`);
+		}
+
+		if (item.lastDate && item.timeIntervalValue && item.timeIntervalUnit) {
+			const lastDate = new Date(item.lastDate);
+			const dueDate = new Date(lastDate);
+			if (item.timeIntervalUnit === 'DAY') dueDate.setDate(dueDate.getDate() + item.timeIntervalValue);
+			if (item.timeIntervalUnit === 'MONTH') dueDate.setMonth(dueDate.getMonth() + item.timeIntervalValue);
+			if (item.timeIntervalUnit === 'YEAR') dueDate.setFullYear(dueDate.getFullYear() + item.timeIntervalValue);
+			dueInfoParts.push(formatDate(dueDate.toISOString()));
+		}
+		
+		if (dueInfoParts.length === 0) return '-';
+		return `Target: ${dueInfoParts.join(' atau ')}`;
+	}
 	return '-';
 }
 
-function getIntervalLabel(type: IntervalType | null, value: number | null): string {
+function getIntervalLabel(type: IntervalType | null, value: number | null, item?: ServiceItem): string {
 	if (!type || type === 'NONE') return 'Tanpa interval';
+	if (type === 'WHICHEVER_FIRST' && item) {
+		const kmPart = item.intervalValue ? `${item.intervalValue.toLocaleString()} km` : '';
+		
+		let timePart = '';
+		if (item.timeIntervalValue && item.timeIntervalUnit) {
+			const unitLabels: Record<string, string> = {
+				DAY: 'hari',
+				MONTH: 'bulan',
+				YEAR: 'tahun'
+			};
+			timePart = `${item.timeIntervalValue} ${unitLabels[item.timeIntervalUnit] || item.timeIntervalUnit}`;
+		}
+
+		if (kmPart && timePart) return `Setiap ${kmPart} atau ${timePart}`;
+		if (kmPart) return `Setiap ${kmPart}`;
+		if (timePart) return `Setiap ${timePart}`;
+		return 'Mana duluan';
+	}
 	const labels: Record<string, string> = {
 		KM: `Setiap ${(value || 0).toLocaleString()} km`,
 		DAY: `Setiap ${value} hari`,
@@ -138,7 +197,7 @@ export default function ServiceItemList({
 											{progress >= 70 && progress < 100 && <Badge variant="warning">Segera</Badge>}
 										</div>
 										<p className="text-sm text-muted-foreground mt-0.5">
-											{getIntervalLabel(item.intervalType, item.intervalValue)}
+											{getIntervalLabel(item.intervalType, item.intervalValue, item)}
 										</p>
 									</div>
 									<div className="flex gap-1">

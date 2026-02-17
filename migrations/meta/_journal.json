@@ -29,6 +29,13 @@
       "when": 1761181221653,
       "tag": "0003_green_big_bertha",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1771287924819,
+      "tag": "0004_add_time_interval_to_service_items",
+      "breakpoints": true
     }
   ]
 }

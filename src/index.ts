@@ -335,7 +335,7 @@ app.post('/api/service-items', async (c) => {
 	try {
 		const user = getAuthUser(c);
 		const body = await c.req.json();
-		const { kendaraanId, nama, intervalType, intervalValue, lastKm, lastDate } = body;
+		const { kendaraanId, nama, intervalType, intervalValue, timeIntervalValue, timeIntervalUnit, lastKm, lastDate } = body;
 		const db = c.env.DB;
 
 		const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(kendaraanId, user.id).first();
@@ -345,9 +345,9 @@ app.post('/api/service-items', async (c) => {
 
 		await db
 			.prepare(
-				'INSERT INTO service_items (kendaraan_id, nama, interval_type, interval_value, last_km, last_date) VALUES (?, ?, ?, ?, ?, ?)',
+				'INSERT INTO service_items (kendaraan_id, nama, interval_type, interval_value, time_interval_value, time_interval_unit, last_km, last_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
 			)
-			.bind(kendaraanId, nama, intervalType, intervalValue, lastKm, lastDate)
+			.bind(kendaraanId, nama, intervalType, intervalValue, timeIntervalValue || null, timeIntervalUnit || null, lastKm, lastDate)
 			.run();
 
 		return c.json({ success: true });
@@ -361,7 +361,7 @@ app.put('/api/service-items/:id', async (c) => {
 		const user = getAuthUser(c);
 		const id = c.req.param('id');
 		const body = await c.req.json();
-		const { nama, intervalType, intervalValue, lastKm, lastDate } = body;
+		const { nama, intervalType, intervalValue, timeIntervalValue, timeIntervalUnit, lastKm, lastDate } = body;
 		const db = c.env.DB;
 
 		const serviceItem = await db
@@ -374,8 +374,8 @@ app.put('/api/service-items/:id', async (c) => {
 		}
 
 		await db
-			.prepare('UPDATE service_items SET nama = ?, interval_type = ?, interval_value = ?, last_km = ?, last_date = ? WHERE id = ?')
-			.bind(nama, intervalType, intervalValue, lastKm, lastDate, id)
+			.prepare('UPDATE service_items SET nama = ?, interval_type = ?, interval_value = ?, time_interval_value = ?, time_interval_unit = ?, last_km = ?, last_date = ? WHERE id = ?')
+			.bind(nama, intervalType, intervalValue, timeIntervalValue || null, timeIntervalUnit || null, lastKm, lastDate, id)
 			.run();
 
 		return c.json({ success: true });

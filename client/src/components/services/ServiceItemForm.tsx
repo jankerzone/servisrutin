@@ -33,6 +33,8 @@ export default function ServiceItemForm({ open, onClose, onSubmit, currentKm = 0
 		(item?.intervalType as IntervalType) || 'KM',
 	);
 	const [intervalValue, setIntervalValue] = useState(item?.intervalValue?.toString() || '');
+	const [timeIntervalValue, setTimeIntervalValue] = useState(item?.timeIntervalValue?.toString() || '');
+	const [timeIntervalUnit, setTimeIntervalUnit] = useState<IntervalType>((item?.timeIntervalUnit as IntervalType) || 'MONTH');
 	const [lastKm, setLastKm] = useState(item?.lastKm?.toString() || '');
 	const [lastDate, setLastDate] = useState(item?.lastDate || '');
 	const [loading, setLoading] = useState(false);
@@ -49,6 +51,8 @@ export default function ServiceItemForm({ open, onClose, onSubmit, currentKm = 0
 				nama,
 				intervalType,
 				intervalValue: intervalType === 'NONE' ? null : parseInt(intervalValue) || null,
+				timeIntervalValue: intervalType === 'WHICHEVER_FIRST' ? parseInt(timeIntervalValue) || null : null,
+				timeIntervalUnit: intervalType === 'WHICHEVER_FIRST' ? timeIntervalUnit : null,
 				lastKm: lastKm ? parseInt(lastKm) : null,
 				lastDate: lastDate || null,
 			});
@@ -56,6 +60,8 @@ export default function ServiceItemForm({ open, onClose, onSubmit, currentKm = 0
 				setNama('');
 				setIntervalType('KM');
 				setIntervalValue('');
+				setTimeIntervalValue('');
+				setTimeIntervalUnit('MONTH');
 				setLastKm('');
 				setLastDate('');
 			}
@@ -103,7 +109,7 @@ export default function ServiceItemForm({ open, onClose, onSubmit, currentKm = 0
 						</Select>
 					</div>
 
-					{intervalType !== 'NONE' && (
+					{intervalType !== 'NONE' && intervalType !== 'WHICHEVER_FIRST' && (
 						<div className="space-y-2">
 							<Label>
 								Nilai Interval
@@ -122,6 +128,45 @@ export default function ServiceItemForm({ open, onClose, onSubmit, currentKm = 0
 						</div>
 					)}
 
+					{intervalType === 'WHICHEVER_FIRST' && (
+						<div className="space-y-4 rounded-md border p-3 bg-muted/30">
+							<div className="space-y-2">
+								<Label>Interval Jarak (km)</Label>
+								<Input
+									type="number"
+									value={intervalValue}
+									onChange={(e) => setIntervalValue(e.target.value)}
+									placeholder="cth. 5000"
+									required
+								/>
+							</div>
+
+							<div className="space-y-2">
+								<Label>Atau Interval Waktu</Label>
+								<div className="flex gap-2">
+									<Input
+										type="number"
+										value={timeIntervalValue}
+										onChange={(e) => setTimeIntervalValue(e.target.value)}
+										placeholder="cth. 6"
+										required
+										className="flex-1"
+									/>
+									<Select value={timeIntervalUnit} onValueChange={(v) => setTimeIntervalUnit(v as IntervalType)}>
+										<SelectTrigger className="w-28">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="DAY">Hari</SelectItem>
+											<SelectItem value="MONTH">Bulan</SelectItem>
+											<SelectItem value="YEAR">Tahun</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+							</div>
+						</div>
+					)}
+
 					<div className="space-y-2">
 						<Label>Kilometer Terakhir Servis</Label>
 						<Input
@@ -131,9 +176,20 @@ export default function ServiceItemForm({ open, onClose, onSubmit, currentKm = 0
 							placeholder={currentKm > 0 ? currentKm.toString() : 'cth. 20000'}
 						/>
 						{currentKm > 0 && (
-							<p className="text-xs text-muted-foreground">
-								Odometer saat ini: {currentKm.toLocaleString()} km
-							</p>
+							<div className="flex items-center justify-between">
+								<p className="text-xs text-muted-foreground">
+									Odometer saat ini: {currentKm.toLocaleString()} km
+								</p>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="h-auto p-0 text-xs text-primary hover:text-primary/80"
+									onClick={() => setLastKm(currentKm.toString())}
+								>
+									Gunakan saat ini
+								</Button>
+							</div>
 						)}
 					</div>
 

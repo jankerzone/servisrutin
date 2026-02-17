@@ -34,6 +34,8 @@ export interface ServiceItem {
 	nama: string;
 	intervalType: IntervalType | null;
 	intervalValue: number | null;
+	timeIntervalValue: number | null;
+	timeIntervalUnit: IntervalType | null;
 	lastKm: number | null;
 	lastDate: string | null;
 }
@@ -43,6 +45,8 @@ export interface ServiceItemPayload {
 	nama: string;
 	intervalType: IntervalType;
 	intervalValue: number | null;
+	timeIntervalValue: number | null;
+	timeIntervalUnit: IntervalType | null;
 	lastKm: number | null;
 	lastDate: string | null;
 }
@@ -108,6 +112,8 @@ export interface ServiceItemRow {
 	nama: string;
 	interval_type: string | null;
 	interval_value: number | null;
+	time_interval_value: number | null;
+	time_interval_unit: string | null;
 	last_km: number | null;
 	last_date: string | null;
 }
@@ -143,6 +149,8 @@ export function toServiceItem(row: ServiceItemRow): ServiceItem {
 		nama: row.nama,
 		intervalType: row.interval_type as IntervalType | null,
 		intervalValue: row.interval_value,
+		timeIntervalValue: row.time_interval_value,
+		timeIntervalUnit: row.time_interval_unit as IntervalType | null,
 		lastKm: row.last_km,
 		lastDate: row.last_date,
 	};

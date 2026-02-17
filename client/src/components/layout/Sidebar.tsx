@@ -65,7 +65,11 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
 				{/* Footer */}
 				<div className="border-t border-sidebar-border p-4">
-					<p className="text-xs text-muted-foreground">Servis Rutin v2.0</p>
+					<p className="text-xs text-muted-foreground">
+						ServisRutin by Jankerzone
+						<br />
+						<span className="opacity-70 text-[10px]">v{__APP_VERSION__} ({__BUILD_DATE__})</span>
+					</p>
 				</div>
 			</aside>
 		</>

@@ -316,7 +316,7 @@ export default function AuthPage() {
 
 					{/* Footer */}
 					<p className="text-center text-xs text-muted-foreground">
-						Dilindungi oleh Cloudflare Turnstile
+						ServisRutin by Jankerzone @{new Date().getFullYear()}
 					</p>
 				</div>
 			</div>

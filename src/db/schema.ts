@@ -32,6 +32,8 @@ export const serviceItems = sqliteTable('service_items', {
 	nama: text('nama').notNull(),
 	intervalType: text('interval_type'), // "KM", "DAY", "MONTH", "YEAR", "WHICHEVER_FIRST", "NONE"
 	intervalValue: integer('interval_value'),
+	timeIntervalValue: integer('time_interval_value'),
+	timeIntervalUnit: text('time_interval_unit'), // "DAY", "MONTH", "YEAR"
 	lastKm: integer('last_km'),
 	lastDate: text('last_date'), // "2025-07-19"
 });
