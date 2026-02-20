@@ -10,13 +10,14 @@ A web application for tracking vehicle service schedules and maintenance reminde
 - ✅ Intelligent alerts for services due soon (<500km or <7 days)
 - ✅ Multi-vehicle switching with current odometer tracking
 - ✅ Sort service items by name, date, or km
-- ✅ Simple and intuitive Material-UI interface
+- ✅ Simple and intuitive interface
 - ✅ Real-time progress calculations
 - ✅ Update current odometer with dialog
+- ✅ Secure User Authentication (Email/Password + Turnstile)
 
 ## 🚀 Tech Stack
 
-- **Frontend**: React 19 + Vite + TypeScript + Material-UI
+- **Frontend**: React 19 + Vite + TypeScript + Radix UI + Tailwind CSS
 - **Backend**: Hono (Cloudflare Workers)
 - **Database**: Cloudflare D1 (SQLite)
 - **ORM**: Drizzle ORM
@@ -30,31 +31,21 @@ A web application for tracking vehicle service schedules and maintenance reminde
 servis-rutin/
 ├── client/
 │   └── src/
-│       ├── components/
-│       │   ├── AddServiceForm.tsx      # Service item input form
-│       │   ├── ServiceView.tsx         # Main service view with sorting
-│       │   ├── ServiceList.tsx         # Service cards with progress bars
-│       │   └── VehicleSelector.tsx     # Vehicle dropdown and KM tracker
-│       ├── store/
-│       │   └── useKendaraanStore.ts    # Zustand global state
-│       ├── App.tsx                     # Main application
-│       └── main.tsx                    # Entry point
+│       ├── components/         # React components
+│       ├── store/              # Zustand global state
+│       ├── App.tsx             # Main application
+│       └── main.tsx            # Entry point
 ├── src/
-│   ├── index.ts                        # API routes & endpoints
+│   ├── index.ts                # API routes & endpoints
+│   ├── auth.ts                 # Authentication logic
+│   ├── lib/                    # Shared libraries (validation, errors, etc.)
 │   └── db/
-│       └── schema.ts                   # Database schema (Drizzle)
-├── migrations/                          # Drizzle migrations
-│   ├── 0000_spooky_mysterio.sql       # Initial tables
-│   └── 0001_rapid_vision.sql          # Add current_km field
-├── ai_docs/                            # Phase documentation
-│   ├── phase_1.md
-│   ├── phase_2.md
-│   ├── phase_3.md
-│   └── phase_4_5.md
-├── public/                             # Built frontend assets
-├── DEPLOYMENT.md                       # Deployment guide
-├── README.md                           # This file
-└── wrangler.jsonc                      # Cloudflare Workers config
+│       └── schema.ts           # Database schema (Drizzle)
+├── migrations/                 # Drizzle migrations
+├── public/                     # Built frontend assets
+├── DEPLOYMENT.md               # Deployment guide
+├── README.md                   # This file
+└── wrangler.jsonc              # Cloudflare Workers config
 ```
 
 ## 🚀 Getting Started
@@ -95,13 +86,6 @@ servis-rutin/
 Via Drizzle Studio (GUI):
 ```bash
 npm run db:studio
-```
-
-Or via SQL:
-```bash
-npx wrangler d1 execute servis-rutin-db --local \
-  --command "INSERT INTO kendaraan (nama, tipe, plat, current_km) 
-             VALUES ('Honda Beat', 'Motor', 'B 1234 XYZ', 15000)"
 ```
 
 ## 📚 Available Scripts
@@ -152,55 +136,15 @@ See **[DEPLOYMENT.md](DEPLOYMENT.md)** for complete deployment guide.
 - `GET /api/service-items?kendaraanId=X&order=Y` - List service items
 - `POST /api/service-items` - Create service item
 
-## 📖 Documentation
-
-Detailed documentation for each development phase:
-
-- [Phase 1: Project Setup](ai_docs/phase_1.md)
-- [Phase 2: Tech Stack Setup](ai_docs/phase_2.md)
-- [Phase 3: Service Input Form](ai_docs/phase_3.md)
-- [Phase 4 & 5: List Display & Advanced Features](ai_docs/phase_4_5.md)
-- [Deployment Guide](DEPLOYMENT.md)
-
 ## 🎯 Development Phases
 
-- ✅ **Phase 1**: Project setup and infrastructure (Git, dependencies, config)
-- ✅ **Phase 2**: Tech stack setup (MUI, Zustand, date-fns, ESLint, D1 schema)
-- ✅ **Phase 3**: Service item input form with interval types
-- ✅ **Phase 4**: Service list display with progress bars and sorting
-- ✅ **Phase 5**: Multi-vehicle support, reminders, current km tracking
+- ✅ **Phase 1**: Project setup and infrastructure
+- ✅ **Phase 2**: Tech stack setup
+- ✅ **Phase 3**: Service item input form
+- ✅ **Phase 4**: Service list display
+- ✅ **Phase 5**: Multi-vehicle support & reminders
+- ✅ **Phase 6**: Authentication & Security Hardening
 - 🚀 **Status**: Production Ready!
-
-## 🎨 Key Features
-
-### Service Item Management
-- Add service items with name
-- Choose interval type: KM, DAY, MONTH, YEAR, WHICHEVER_FIRST, NONE
-- Set interval value (e.g., 5000 km, 12 months)
-- Record last service date and km
-
-### Visual Progress Tracking
-- **Green bar (<50%)**: Service is fresh, no action needed
-- **Yellow bar (50-80%)**: Service due soon, plan ahead
-- **Red bar (>80%)**: Service overdue, take action!
-
-### Smart Reminders
-- Automatic alerts when service is within 500km or 7 days
-- Snackbar notifications at top of screen
-- Shows all due items in one message
-- "OVERDUE" flag for past-due services
-
-### Multi-Vehicle Support
-- Dropdown selector to switch between vehicles
-- Current odometer display per vehicle
-- Quick update dialog for odometer readings
-- Progress recalculated per vehicle
-
-### Sorting & Organization
-- Sort by: Name, Last Date, Last KM
-- Clean card-based layout
-- Responsive Material-UI design
-- Loading states and empty states
 
 ## 🔧 Database Schema
 
@@ -244,25 +188,13 @@ npx wrangler deploy
 # Done! 🎉
 ```
 
-Your app will be live at:
-```
-https://servis-rutin-backend.YOUR_SUBDOMAIN.workers.dev
-```
-
-See **[DEPLOYMENT.md](DEPLOYMENT.md)** for:
-- Custom domain setup
-- Environment variables
-- Monitoring & logs
-- Troubleshooting
-- Production checklist
-
 ## 🎨 Screenshots
 
 The application features:
-- ✅ Clean Material-UI design system
+- ✅ Clean modern design system (Radix UI + Tailwind)
 - ✅ Color-coded progress bars (green/yellow/red)
 - ✅ Responsive card layout
-- ✅ Real-time service alerts (Snackbar)
+- ✅ Real-time service alerts (Sonner)
 - ✅ Multi-vehicle dropdown selector
 - ✅ Update odometer dialog
 
@@ -272,7 +204,7 @@ Built with amazing open-source tools:
 
 **Frontend:**
 - React 19 + TypeScript
-- Material-UI (MUI) v7
+- Radix UI + Tailwind CSS
 - Vite 7 (build tool)
 - Zustand (state management)
 - date-fns (date utilities)
@@ -283,31 +215,14 @@ Built with amazing open-source tools:
 - Cloudflare D1 (SQLite database)
 - Drizzle ORM (type-safe queries)
 
+**Security:**
+- Web Crypto API (PBKDF2)
+- Cloudflare Turnstile
+
 **Development:**
 - ESLint (code quality)
 - TypeScript (strict mode)
 - Vitest (testing)
-
-## 📊 Performance
-
-- **Build Time**: ~3s
-- **Bundle Size**: 473 KB (gzipped: 145 KB)
-- **API Response**: <100ms (D1 edge database)
-- **Global Edge**: Cloudflare's network (250+ cities)
-
-## 🔮 Future Enhancements
-
-Ideas for future versions:
-
-- [ ] User authentication (Cloudflare Access)
-- [ ] Service history tracking (completion logs)
-- [ ] Edit/delete service items
-- [ ] Cost tracking per service
-- [ ] Bulk import/export (CSV)
-- [ ] Reports and analytics
-- [ ] Push notifications (Web Push API)
-- [ ] Mobile app (React Native)
-- [ ] Multi-language support
 
 ## 📄 License
 
@@ -316,7 +231,7 @@ MIT License - feel free to use for your own projects!
 ---
 
 **Status**: ✅ Production Ready  
-**Version**: 1.0.0  
-**Last Updated**: October 21, 2024
+**Version**: 1.1.0
+**Last Updated**: October 2024
 
 Built with ❤️ using React, Hono, and Cloudflare
