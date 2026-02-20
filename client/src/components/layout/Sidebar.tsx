@@ -30,10 +30,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 				)}
 			>
 				{/* Logo */}
-				<div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
-					<div className="flex items-center gap-2">
-						<img src="/images/logo.png" alt="Logo" className="h-12 w-12 object-contain" />
-						<span className="text-lg font-bold text-sidebar-foreground">Servis Rutin</span>
+				<div className="flex h-20 items-center justify-between border-b border-sidebar-border px-3">
+					<div>
+						<img src="/images/logo-black-transparent.png" alt="Servis Rutin" className="h-16 w-auto max-w-[210px] object-contain" />
 					</div>
 					<Button variant="ghost" size="icon" className="lg:hidden" onClick={onClose}>
 						<X className="h-5 w-5" />

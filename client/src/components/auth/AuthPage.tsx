@@ -150,23 +150,19 @@ export default function AuthPage() {
 				<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
 
 				{/* Content over image */}
-				<div className="relative z-10 flex flex-col justify-between p-10 text-white w-full">
-					{/* Top branding */}
-					<div className="flex items-center gap-3">
-						<img src="/images/logo.png" alt="Logo" className="h-20 w-20 object-contain drop-shadow-md" />
-						<span className="text-2xl font-semibold tracking-tight">Servis Rutin</span>
-					</div>
+				<div className="relative z-10 flex flex-col justify-end p-10 text-white w-full">
 
 					{/* Bottom text + features */}
 					<div className="space-y-8">
 						<div className="space-y-3">
 							<h2 className="text-3xl font-bold leading-tight tracking-tight">
-								Pantau servis kendaraan
+								ServisRutin<br />
+								Pantau servis kendaraan anda
 								<br />
 								dengan mudah & teratur.
 							</h2>
 							<p className="text-white/70 text-base max-w-md leading-relaxed">
-								Catat riwayat servis, atur pengingat perawatan berkala, dan pastikan kendaraan Anda selalu dalam kondisi prima.
+								Catat riwayat servis, atur pengingat perawatan berkala, pajak kendaraan bermotor, dan pastikan kendaraan Anda selalu dalam kondisi prima.
 							</p>
 						</div>
 
@@ -194,15 +190,11 @@ export default function AuthPage() {
 			{/* Right — Auth form */}
 			<div className="flex w-full lg:w-2/5 items-center justify-center p-6 sm:p-10">
 				<div className="w-full max-w-[420px] space-y-8">
-					{/* Mobile branding (hidden on desktop since left panel has it) */}
-					<div className="flex flex-col items-center gap-3 lg:hidden">
-						<img src="/images/logo.png" alt="Logo" className="h-28 w-28 object-contain drop-shadow-lg" />
-						<div className="text-center">
-							<h1 className="text-2xl font-bold tracking-tight">Servis Rutin</h1>
-							<p className="text-sm text-muted-foreground mt-1">
-								Pantau jadwal servis kendaraan Anda
-							</p>
-						</div>
+					{/* Mobile intro */}
+					<div className="text-center lg:hidden">
+						<p className="text-sm text-muted-foreground">
+							Pantau jadwal servis kendaraan Anda
+						</p>
 					</div>
 
 					{/* Desktop heading */}
