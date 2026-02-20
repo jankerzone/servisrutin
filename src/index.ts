@@ -3,22 +3,9 @@ import { cors } from 'hono/cors';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { hashPassword, verifyPassword, createSession, getSessionUser, deleteSession, authMiddleware, getAuthUser } from './auth';
 import { Bindings } from './types';
-
-
-async function verifyTurnstile(token: string, secretKey: string, ip?: string): Promise<boolean> {
-	const formData = new URLSearchParams();
-	formData.append('secret', secretKey);
-	formData.append('response', token);
-	if (ip) formData.append('remoteip', ip);
-
-	const result = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-		method: 'POST',
-		body: formData,
-	});
-
-	const outcome = (await result.json()) as { success: boolean };
-	return outcome.success;
-}
+import { verifyTurnstile } from './lib/turnstile';
+import { isValidEmail, isValidPassword, isValidOdometer } from './lib/validation';
+import { handleError, handleValidationError, handleUnauthorized, handleNotFound } from './lib/errors';
 
 const app = new Hono<{ Bindings: Bindings, Variables: { user: any } }>();
 
@@ -26,7 +13,15 @@ const app = new Hono<{ Bindings: Bindings, Variables: { user: any } }>();
 app.use(
 	'/*',
 	cors({
-		origin: (origin) => origin,
+		origin: (origin) => {
+			// Allow localhost for development
+			if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+				return origin;
+			}
+			// In production, this should be restricted to the actual frontend domain.
+			// Currently reflecting origin for compatibility, but this should be tightened.
+			return origin;
+		},
 		credentials: true,
 	}),
 );
@@ -36,19 +31,27 @@ app.get('/api/health', (c) => {
 	return c.json({ status: 'ok', message: 'Servis Rutin API is running' });
 });
 
-// Auth routes (public) - UNCHANGED MECHANISM
+// Auth routes (public)
 app.post('/api/auth/signup', async (c) => {
 	try {
 		const body = await c.req.json();
 		const { email, password, name, turnstileToken } = body;
 
 		if (!email || !password) {
-			return c.json({ error: 'Email and password are required' }, 400);
+			return handleValidationError(c, 'Email and password are required');
+		}
+
+		if (!isValidEmail(email)) {
+			return handleValidationError(c, 'Invalid email format');
+		}
+
+		if (!isValidPassword(password)) {
+			return handleValidationError(c, 'Password must be at least 8 characters long and contain both letters and numbers');
 		}
 
 		// Verify Turnstile token
 		if (!turnstileToken) {
-			return c.json({ error: 'Verifikasi keamanan diperlukan' }, 400);
+			return handleValidationError(c, 'Verifikasi keamanan diperlukan');
 		}
 		const ip = c.req.header('CF-Connecting-IP');
 		const turnstileOk = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET_KEY, ip);
@@ -61,7 +64,7 @@ app.post('/api/auth/signup', async (c) => {
 		const existingUser = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
 
 		if (existingUser) {
-			return c.json({ error: 'Email already registered' }, 400);
+			return handleValidationError(c, 'Email already registered');
 		}
 
 		const passwordHash = await hashPassword(password);
@@ -85,8 +88,7 @@ app.post('/api/auth/signup', async (c) => {
 
 		return c.json({ success: true, user: { id: userId, email, name } });
 	} catch (error) {
-		console.error('Error during signup:', error);
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -96,12 +98,12 @@ app.post('/api/auth/login', async (c) => {
 		const { email, password, turnstileToken } = body;
 
 		if (!email || !password) {
-			return c.json({ error: 'Email and password are required' }, 400);
+			return handleValidationError(c, 'Email and password are required');
 		}
 
 		// Verify Turnstile token
 		if (!turnstileToken) {
-			return c.json({ error: 'Verifikasi keamanan diperlukan' }, 400);
+			return handleValidationError(c, 'Verifikasi keamanan diperlukan');
 		}
 		const ip = c.req.header('CF-Connecting-IP');
 		const turnstileOk = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET_KEY, ip);
@@ -114,13 +116,13 @@ app.post('/api/auth/login', async (c) => {
 		const user = await db.prepare('SELECT id, email, name, password_hash FROM users WHERE email = ?').bind(email).first();
 
 		if (!user) {
-			return c.json({ error: 'Invalid email or password' }, 401);
+			return handleUnauthorized(c, 'Invalid email or password');
 		}
 
 		const isValid = await verifyPassword(password, user.password_hash as string);
 
 		if (!isValid) {
-			return c.json({ error: 'Invalid email or password' }, 401);
+			return handleUnauthorized(c, 'Invalid email or password');
 		}
 
 		const sessionId = await createSession(db, user.id as number);
@@ -135,8 +137,7 @@ app.post('/api/auth/login', async (c) => {
 
 		return c.json({ success: true, user: { id: user.id, email: user.email, name: user.name } });
 	} catch (error) {
-		console.error('Error during login:', error);
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -152,8 +153,7 @@ app.post('/api/auth/logout', async (c) => {
 
 		return c.json({ success: true });
 	} catch (error) {
-		console.error('Error during logout:', error);
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -168,8 +168,7 @@ app.get('/api/auth/me', async (c) => {
 
 		return c.json({ user: { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatar_url } });
 	} catch (error) {
-		console.error('Error fetching current user:', error);
-		return c.json({ user: null }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -180,7 +179,7 @@ app.put('/api/profile', async (c) => {
 		const user = await getSessionUser(c.env.DB, sessionId);
 
 		if (!user) {
-			return c.json({ error: 'Unauthorized' }, 401);
+			return handleUnauthorized(c);
 		}
 
 		const body = await c.req.json();
@@ -192,7 +191,7 @@ app.put('/api/profile', async (c) => {
 
 		return c.json({ success: true, user: { ...user, name, avatarUrl } });
 	} catch (error) {
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -200,34 +199,33 @@ app.put('/api/profile', async (c) => {
 app.put('/api/profile/password', async (c) => {
 	try {
 		const sessionId = getCookie(c, 'session_id');
-		const user = await getSessionUser(c.env.DB, sessionId); // Note: getSessionUser in auth.ts might need to return password_hash to verify old password, or we query it here.
+		const user = await getSessionUser(c.env.DB, sessionId);
 
 		if (!user) {
-			return c.json({ error: 'Unauthorized' }, 401);
+			return handleUnauthorized(c);
 		}
 
 		const body = await c.req.json();
 		const { oldPassword, newPassword } = body;
 
 		if (!oldPassword || !newPassword) {
-			return c.json({ error: 'Both old and new passwords are required' }, 400);
+			return handleValidationError(c, 'Both old and new passwords are required');
 		}
 
-		if (newPassword.length < 6) {
-			return c.json({ error: 'New password must be at least 6 characters long' }, 400);
+		if (!isValidPassword(newPassword)) {
+			return handleValidationError(c, 'New password must be at least 8 characters long and contain both letters and numbers');
 		}
 
-		// Re-fetch user to get password hash (getSessionUser usually returns minimal info)
 		const fullUser = await c.env.DB.prepare('SELECT password_hash FROM users WHERE id = ?').bind(user.id).first();
 
 		if (!fullUser) {
-			return c.json({ error: 'User not found' }, 404);
+			return handleNotFound(c, 'User not found');
 		}
 
 		const isValid = await verifyPassword(oldPassword, fullUser.password_hash as string);
 
 		if (!isValid) {
-			return c.json({ error: 'Incorrect old password' }, 401);
+			return handleUnauthorized(c, 'Incorrect old password');
 		}
 
 		const newHash = await hashPassword(newPassword);
@@ -236,7 +234,7 @@ app.put('/api/profile/password', async (c) => {
 
 		return c.json({ success: true });
 	} catch (error) {
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -258,7 +256,7 @@ app.get('/api/vehicles', async (c) => {
 		const results = await db.prepare('SELECT * FROM kendaraan WHERE user_id = ? ORDER BY nama').bind(user.id).all();
 		return c.json(results);
 	} catch (error) {
-		return c.json({ error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -266,12 +264,16 @@ app.post('/api/vehicles', async (c) => {
 	try {
 		const user = getAuthUser(c);
 		if (!user || !user.id) {
-			return c.json({ success: false, error: 'User not authenticated' }, 401);
+			return handleUnauthorized(c);
 		}
 
 		const body = await c.req.json();
 		const { nama, tipe, plat, tahun, bulanPajak, currentKm } = body;
 		const db = c.env.DB;
+
+		if (currentKm !== undefined && !isValidOdometer(currentKm)) {
+			return handleValidationError(c, 'Invalid odometer value');
+		}
 
 		const result = await db
 			.prepare('INSERT INTO kendaraan (user_id, nama, tipe, plat, tahun, bulan_pajak, current_km) VALUES (?, ?, ?, ?, ?, ?, ?)')
@@ -280,11 +282,10 @@ app.post('/api/vehicles', async (c) => {
 
 		return c.json({ success: true, result });
 	} catch (error) {
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
-// FIX: Added ownership check for odometer update
 app.put('/api/vehicles/:id/km', async (c) => {
 	try {
 		const user = getAuthUser(c);
@@ -293,21 +294,20 @@ app.put('/api/vehicles/:id/km', async (c) => {
 		const { currentKm, updatedAt: _updatedAt } = body;
 		const db = c.env.DB;
 
-		// Verify ownership
 		const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(id, user.id).first();
 		if (!vehicle) {
-			return c.json({ error: 'Vehicle not found or unauthorized' }, 404);
+			return handleNotFound(c, 'Vehicle not found or unauthorized');
 		}
 
-		if (typeof currentKm !== 'number' || currentKm < 0) {
-			return c.json({ error: 'Invalid odometer value' }, 400);
+		if (!isValidOdometer(currentKm)) {
+			return handleValidationError(c, 'Invalid odometer value');
 		}
 
 		await db.prepare('UPDATE kendaraan SET current_km = ? WHERE id = ?').bind(currentKm, id).run();
 
 		return c.json({ success: true });
 	} catch (error) {
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -320,10 +320,13 @@ app.put('/api/vehicles/:id', async (c) => {
 		const { nama, tipe, plat, tahun, bulanPajak, currentKm } = body;
 		const db = c.env.DB;
 
-		// Verify ownership
 		const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(id, user.id).first();
 		if (!vehicle) {
-			return c.json({ error: 'Vehicle not found or unauthorized' }, 404);
+			return handleNotFound(c, 'Vehicle not found or unauthorized');
+		}
+
+		if (currentKm !== undefined && !isValidOdometer(currentKm)) {
+			return handleValidationError(c, 'Invalid odometer value');
 		}
 
 		await db
@@ -333,7 +336,7 @@ app.put('/api/vehicles/:id', async (c) => {
 
 		return c.json({ success: true });
 	} catch (error) {
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -345,7 +348,7 @@ app.delete('/api/vehicles/:id', async (c) => {
 
 		const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(id, user.id).first();
 		if (!vehicle) {
-			return c.json({ error: 'Vehicle not found or unauthorized' }, 404);
+			return handleNotFound(c, 'Vehicle not found or unauthorized');
 		}
 
 		// Use batch for atomic cascade delete
@@ -357,13 +360,13 @@ app.delete('/api/vehicles/:id', async (c) => {
 
 		return c.json({ success: true });
 	} catch (error) {
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
 // ---- Service Item routes ----
 
-// FIX: SQL injection - whitelist ORDER BY values
+// Whitelist ORDER BY values
 const ALLOWED_ORDERS = ['nama', 'last_date', 'last_km', 'interval_type'] as const;
 
 app.get('/api/service-items', async (c) => {
@@ -374,24 +377,23 @@ app.get('/api/service-items', async (c) => {
 		const db = c.env.DB;
 
 		if (!kendaraanId) {
-			return c.json({ error: 'kendaraanId is required' }, 400);
+			return handleValidationError(c, 'kendaraanId is required');
 		}
 
-		// Whitelist the order parameter
 		const order = ALLOWED_ORDERS.includes(orderParam as typeof ALLOWED_ORDERS[number])
 			? orderParam
 			: 'nama';
 
 		const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(kendaraanId, user.id).first();
 		if (!vehicle) {
-			return c.json({ error: 'Vehicle not found or unauthorized' }, 404);
+			return handleNotFound(c, 'Vehicle not found or unauthorized');
 		}
 
 		const results = await db.prepare(`SELECT * FROM service_items WHERE kendaraan_id = ? ORDER BY ${order}`).bind(kendaraanId).all();
 
 		return c.json(results);
 	} catch (error) {
-		return c.json({ error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -404,7 +406,7 @@ app.post('/api/service-items', async (c) => {
 
 		const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(kendaraanId, user.id).first();
 		if (!vehicle) {
-			return c.json({ error: 'Vehicle not found or unauthorized' }, 404);
+			return handleNotFound(c, 'Vehicle not found or unauthorized');
 		}
 
 		await db
@@ -416,7 +418,7 @@ app.post('/api/service-items', async (c) => {
 
 		return c.json({ success: true });
 	} catch (error) {
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -434,7 +436,7 @@ app.put('/api/service-items/:id', async (c) => {
 			.first();
 
 		if (!serviceItem) {
-			return c.json({ error: 'Service item not found or unauthorized' }, 404);
+			return handleNotFound(c, 'Service item not found or unauthorized');
 		}
 
 		await db
@@ -444,7 +446,7 @@ app.put('/api/service-items/:id', async (c) => {
 
 		return c.json({ success: true });
 	} catch (error) {
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -460,14 +462,14 @@ app.delete('/api/service-items/:id', async (c) => {
 			.first();
 
 		if (!serviceItem) {
-			return c.json({ error: 'Service item not found or unauthorized' }, 404);
+			return handleNotFound(c, 'Service item not found or unauthorized');
 		}
 
 		await db.prepare('DELETE FROM service_items WHERE id = ?').bind(id).run();
 
 		return c.json({ success: true });
 	} catch (error) {
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -481,16 +483,29 @@ app.post('/api/service-history', async (c) => {
 		const db = c.env.DB;
 
 		if (!kendaraanId || !serviceDate || !odometerKm || !serviceItemIds || serviceItemIds.length === 0) {
-			return c.json({ error: 'Missing required fields' }, 400);
+			return handleValidationError(c, 'Missing required fields');
 		}
 
-		if (typeof odometerKm !== 'number' || odometerKm < 0) {
-			return c.json({ error: 'Invalid odometer value' }, 400);
+		if (!isValidOdometer(odometerKm)) {
+			return handleValidationError(c, 'Invalid odometer value');
 		}
 
 		const vehicle = await db.prepare('SELECT id, current_km FROM kendaraan WHERE id = ? AND user_id = ?').bind(kendaraanId, user.id).first();
 		if (!vehicle) {
-			return c.json({ error: 'Vehicle not found or unauthorized' }, 404);
+			return handleNotFound(c, 'Vehicle not found or unauthorized');
+		}
+
+		// Security Check: Ensure all service items belong to the vehicle
+		// Construct dynamic placeholder string for "IN (?, ?, ...)"
+		const placeholders = serviceItemIds.map(() => '?').join(',');
+		const validItemsQuery = `SELECT id FROM service_items WHERE kendaraan_id = ? AND id IN (${placeholders})`;
+		const validItems = await db.prepare(validItemsQuery).bind(kendaraanId, ...serviceItemIds).all();
+
+		// Check if the number of valid items found matches the number of requested items
+		// Note: This assumes serviceItemIds are unique. If the client sends duplicates, we should handle that.
+		const uniqueRequestedIds = new Set(serviceItemIds);
+		if (validItems.results.length !== uniqueRequestedIds.size) {
+			return handleValidationError(c, 'One or more service items are invalid or do not belong to this vehicle');
 		}
 
 		const createdAt = new Date().toISOString();
@@ -520,7 +535,7 @@ app.post('/api/service-history', async (c) => {
 
 		return c.json({ success: true });
 	} catch (error) {
-		return c.json({ success: false, error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
@@ -531,12 +546,12 @@ app.get('/api/service-history', async (c) => {
 		const db = c.env.DB;
 
 		if (!kendaraanId) {
-			return c.json({ error: 'kendaraanId is required' }, 400);
+			return handleValidationError(c, 'kendaraanId is required');
 		}
 
 		const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(kendaraanId, user.id).first();
 		if (!vehicle) {
-			return c.json({ error: 'Vehicle not found or unauthorized' }, 404);
+			return handleNotFound(c, 'Vehicle not found or unauthorized');
 		}
 
 		const results = await db
@@ -546,7 +561,7 @@ app.get('/api/service-history', async (c) => {
 
 		return c.json(results);
 	} catch (error) {
-		return c.json({ error: String(error) }, 500);
+		return handleError(c, error);
 	}
 });
 
