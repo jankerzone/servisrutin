@@ -263,14 +263,15 @@ app.post('/api/vehicles', async (c) => {
 		const body = await c.req.json();
 		const { nama, tipe, plat, tahun, bulanPajak, currentKm } = body;
 		const db = c.env.DB;
+		const normalizedCurrentKm = currentKm == null || currentKm === '' ? 0 : Number(currentKm);
 
-		if (currentKm !== undefined && !isValidOdometer(currentKm)) {
+		if (!isValidOdometer(normalizedCurrentKm)) {
 			return handleValidationError(c, 'Invalid odometer value');
 		}
 
 		const result = await db
 			.prepare('INSERT INTO kendaraan (user_id, nama, tipe, plat, tahun, bulan_pajak, current_km) VALUES (?, ?, ?, ?, ?, ?, ?)')
-			.bind(user.id, nama, tipe, plat, tahun, bulanPajak, currentKm || 0)
+			.bind(user.id, nama, tipe, plat, tahun, bulanPajak, normalizedCurrentKm)
 			.run();
 
 		return c.json({ success: true, result });
@@ -286,17 +287,18 @@ app.put('/api/vehicles/:id/km', async (c) => {
 		const body = await c.req.json();
 		const { currentKm, updatedAt: _updatedAt } = body;
 		const db = c.env.DB;
+		const normalizedCurrentKm = currentKm == null || currentKm === '' ? NaN : Number(currentKm);
 
 		const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(id, user.id).first();
 		if (!vehicle) {
 			return handleNotFound(c, 'Vehicle not found or unauthorized');
 		}
 
-		if (!isValidOdometer(currentKm)) {
+		if (!isValidOdometer(normalizedCurrentKm)) {
 			return handleValidationError(c, 'Invalid odometer value');
 		}
 
-		await db.prepare('UPDATE kendaraan SET current_km = ? WHERE id = ?').bind(currentKm, id).run();
+		await db.prepare('UPDATE kendaraan SET current_km = ? WHERE id = ?').bind(normalizedCurrentKm, id).run();
 
 		return c.json({ success: true });
 	} catch (error) {
@@ -312,19 +314,20 @@ app.put('/api/vehicles/:id', async (c) => {
 		const body = await c.req.json();
 		const { nama, tipe, plat, tahun, bulanPajak, currentKm } = body;
 		const db = c.env.DB;
+		const normalizedCurrentKm = currentKm == null || currentKm === '' ? 0 : Number(currentKm);
 
 		const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(id, user.id).first();
 		if (!vehicle) {
 			return handleNotFound(c, 'Vehicle not found or unauthorized');
 		}
 
-		if (currentKm !== undefined && !isValidOdometer(currentKm)) {
+		if (!isValidOdometer(normalizedCurrentKm)) {
 			return handleValidationError(c, 'Invalid odometer value');
 		}
 
 		await db
 			.prepare('UPDATE kendaraan SET nama = ?, tipe = ?, plat = ?, tahun = ?, bulan_pajak = ?, current_km = ? WHERE id = ?')
-			.bind(nama, tipe, plat, tahun, bulanPajak, currentKm || 0, id)
+			.bind(nama, tipe, plat, tahun, bulanPajak, normalizedCurrentKm, id)
 			.run();
 
 		return c.json({ success: true });

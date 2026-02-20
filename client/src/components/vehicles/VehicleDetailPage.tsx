@@ -24,6 +24,45 @@ import AddHistoryForm from '@/components/history/AddHistoryForm';
 
 const BULAN = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
+function getMonthsUntil(targetDate: Date, now: Date) {
+	return (targetDate.getFullYear() - now.getFullYear()) * 12 + (targetDate.getMonth() - now.getMonth());
+}
+
+function getNextAnnualTaxDate(bulanPajak: number, now: Date) {
+	const currentMonth = now.getMonth();
+	const dueMonth = bulanPajak - 1;
+	const dueYear = dueMonth >= currentMonth ? now.getFullYear() : now.getFullYear() + 1;
+	return new Date(dueYear, dueMonth, 1);
+}
+
+function getNextFiveYearTaxDate(bulanPajak: number, tahunKendaraan: number, now: Date) {
+	const currentMonth = now.getMonth();
+	const dueMonth = bulanPajak - 1;
+	let dueYear = tahunKendaraan;
+
+	if (dueYear < now.getFullYear()) {
+		dueYear += Math.ceil((now.getFullYear() - dueYear) / 5) * 5;
+	}
+
+	if (dueYear === now.getFullYear() && dueMonth < currentMonth) {
+		dueYear += 5;
+	}
+
+	return new Date(dueYear, dueMonth, 1);
+}
+
+function formatMonthsLeft(monthsLeft: number) {
+	if (monthsLeft === 0) return 'bulan ini';
+	if (monthsLeft === 1) return '1 bulan lagi';
+	return `${monthsLeft} bulan lagi`;
+}
+
+function getReminderVariant(monthsLeft: number, warningThreshold: number): 'success' | 'warning' | 'destructive' {
+	if (monthsLeft <= 1) return 'destructive';
+	if (monthsLeft <= warningThreshold) return 'warning';
+	return 'success';
+}
+
 export default function VehicleDetailPage() {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
@@ -86,6 +125,15 @@ export default function VehicleDetailPage() {
 		fetchHistory();
 	};
 
+	const now = new Date();
+	const annualTaxDate = vehicle.bulanPajak ? getNextAnnualTaxDate(vehicle.bulanPajak, now) : null;
+	const annualTaxMonthsLeft = annualTaxDate ? getMonthsUntil(annualTaxDate, now) : null;
+
+	const fiveYearTaxDate = vehicle.bulanPajak && vehicle.tahun
+		? getNextFiveYearTaxDate(vehicle.bulanPajak, vehicle.tahun, now)
+		: null;
+	const fiveYearTaxMonthsLeft = fiveYearTaxDate ? getMonthsUntil(fiveYearTaxDate, now) : null;
+
 	return (
 		<div className="space-y-6">
 			{/* Breadcrumb */}
@@ -111,6 +159,20 @@ export default function VehicleDetailPage() {
 									{vehicle.tahun && <span>Tahun {vehicle.tahun}</span>}
 									{vehicle.bulanPajak && <span>Pajak {BULAN[vehicle.bulanPajak]}</span>}
 								</div>
+								{(annualTaxDate || fiveYearTaxDate) && (
+									<div className="mt-3 flex flex-wrap items-center gap-2">
+										{annualTaxDate && annualTaxMonthsLeft != null && (
+											<Badge variant={getReminderVariant(annualTaxMonthsLeft, 6)}>
+												Pajak Tahunan: {formatMonthsLeft(annualTaxMonthsLeft)} ({BULAN[annualTaxDate.getMonth() + 1]} {annualTaxDate.getFullYear()})
+											</Badge>
+										)}
+										{fiveYearTaxDate && fiveYearTaxMonthsLeft != null && (
+											<Badge variant={getReminderVariant(fiveYearTaxMonthsLeft, 12)}>
+												Pajak 5 Tahunan + Plat: {formatMonthsLeft(fiveYearTaxMonthsLeft)} ({BULAN[fiveYearTaxDate.getMonth() + 1]} {fiveYearTaxDate.getFullYear()})
+											</Badge>
+										)}
+									</div>
+								)}
 							</div>
 						</div>
 
