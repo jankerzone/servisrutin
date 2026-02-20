@@ -4,7 +4,9 @@ import { Bindings } from './types';
 import { handleUnauthorized } from './lib/errors';
 
 // Password hashing using Web Crypto API (available in Cloudflare Workers)
-const ITERATIONS = 100000;
+// Note: CF Workers CPU limit caps PBKDF2 at ~100k iterations (600k causes timeout)
+const LEGACY_ITERATIONS = 100000;
+const CURRENT_ITERATIONS = 100000;
 const HASH_ALGORITHM = 'SHA-256';
 
 export async function hashPassword(password: string): Promise<string> {
@@ -18,7 +20,7 @@ export async function hashPassword(password: string): Promise<string> {
 		{
 			name: 'PBKDF2',
 			salt: salt,
-			iterations: ITERATIONS,
+			iterations: CURRENT_ITERATIONS,
 			hash: HASH_ALGORITHM,
 		},
 		key,
@@ -33,7 +35,7 @@ export async function hashPassword(password: string): Promise<string> {
 		.map((b) => b.toString(16).padStart(2, '0'))
 		.join('');
 
-	return `${saltHex}:${ITERATIONS}:${hashHex}`;
+	return `${saltHex}:${CURRENT_ITERATIONS}:${hashHex}`;
 }
 
 export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
@@ -47,7 +49,7 @@ export async function verifyPassword(password: string, storedHash: string): Prom
 	} else if (parts.length === 2) {
 		// Legacy format: salt:hash (assumes 100,000 iterations)
 		[saltHex, hashHex] = parts;
-		iterations = 100000;
+		iterations = LEGACY_ITERATIONS;
 	} else {
 		return false;
 	}

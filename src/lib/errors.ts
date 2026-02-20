@@ -1,11 +1,9 @@
 import { Context } from 'hono';
-import { StatusCode } from 'hono/utils/http-status';
 
-export function handleError(c: Context, error: unknown, statusCode: StatusCode = 500) {
-  console.error(`Error [${statusCode}]:`, error);
-  // Do not expose internal error details in production
-  const message = statusCode === 500 ? 'Internal Server Error' : String(error);
-  return c.json({ error: message }, statusCode);
+export function handleError(c: Context, error: unknown) {
+  console.error('Error [500]:', error);
+  // Never expose internal error details to the client
+  return c.json({ error: 'Internal Server Error' }, 500);
 }
 
 export function handleValidationError(c: Context, message: string) {

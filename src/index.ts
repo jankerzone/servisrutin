@@ -13,15 +13,8 @@ const app = new Hono<{ Bindings: Bindings, Variables: { user: any } }>();
 app.use(
 	'/*',
 	cors({
-		origin: (origin) => {
-			// Allow localhost for development
-			if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-				return origin;
-			}
-			// In production, this should be restricted to the actual frontend domain.
-			// Currently reflecting origin for compatibility, but this should be tightened.
-			return origin;
-		},
+		// TODO: Restrict to actual frontend domain in production
+		origin: (origin) => origin,
 		credentials: true,
 	}),
 );
