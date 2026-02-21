@@ -66,9 +66,13 @@ function getReminderVariant(monthsLeft: number, warningThreshold: number): 'succ
 export default function VehicleDetailPage() {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
-	const vehicleId = Number(id);
 
 	const { vehicles, loading: vehiclesLoading, updateKm, deleteVehicle } = useVehicles();
+	
+	// Find the vehicle by shortId or internal integer id
+	const vehicle = vehicles.find((v) => v.shortId === id || v.id === Number(id));
+	const vehicleId = vehicle?.id || 0;
+
 	const [sortBy, setSortBy] = useState('nama');
 	const { items, loading: itemsLoading, addItem, updateItem, deleteItem, fetchItems } = useServiceItems(vehicleId, sortBy);
 	const { history, loading: historyLoading, fetchHistory } = useServiceHistory(vehicleId);
@@ -79,8 +83,6 @@ export default function VehicleDetailPage() {
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [kmInput, setKmInput] = useState('');
 	const [kmDate, setKmDate] = useState(todayISO());
-
-	const vehicle = vehicles.find((v) => v.id === vehicleId);
 
 	if (vehiclesLoading) {
 		return (

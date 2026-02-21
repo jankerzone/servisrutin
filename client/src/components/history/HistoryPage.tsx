@@ -106,7 +106,7 @@ export default function HistoryPage() {
 															<div className="space-y-1">
 																<div className="flex items-center gap-2">
 																	<Link
-																		to={`/kendaraan/${entry.kendaraanId}`}
+																		to={`/kendaraan/${vehicle?.shortId || entry.kendaraanId}`}
 																		className="font-medium hover:text-primary transition-colors"
 																	>
 																		{vehicle?.nama || 'Kendaraan'}

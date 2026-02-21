@@ -269,10 +269,32 @@ app.post('/api/vehicles', async (c) => {
 			return handleValidationError(c, 'Invalid odometer value');
 		}
 
-		const result = await db
-			.prepare('INSERT INTO kendaraan (user_id, nama, tipe, plat, tahun, bulan_pajak, current_km) VALUES (?, ?, ?, ?, ?, ?, ?)')
-			.bind(user.id, nama, tipe, plat, tahun, bulanPajak, normalizedCurrentKm)
-			.run();
+		// Generate a truly unique short_id using SQLite's recursive fallback or a simple loop
+		// We use 4 bytes (8 hex chars) to heavily minimize collision chance
+		let result;
+		let attempts = 0;
+		const maxAttempts = 5;
+
+		while (attempts < maxAttempts) {
+			try {
+				result = await db
+					.prepare('INSERT INTO kendaraan (user_id, nama, tipe, plat, tahun, bulan_pajak, current_km, short_id) VALUES (?, ?, ?, ?, ?, ?, ?, lower(hex(randomblob(4))))')
+					.bind(user.id, nama, tipe, plat, tahun, bulanPajak, normalizedCurrentKm)
+					.run();
+				break; // Success!
+			} catch (e: any) {
+				// If error is UNIQUE constraint failed, retry. Otherwise throw.
+				if (e.message && e.message.includes('UNIQUE constraint failed')) {
+					attempts++;
+				} else {
+					throw e;
+				}
+			}
+		}
+
+		if (!result) {
+			throw new Error('Gagal membuat ID unik setelah beberapa percobaan');
+		}
 
 		return c.json({ success: true, result });
 	} catch (error) {
@@ -559,6 +581,14 @@ app.get('/api/service-history', async (c) => {
 	} catch (error) {
 		return handleError(c, error);
 	}
+});
+
+// SPA fallback: serve index.html for non-API routes
+app.get('/*', async (c) => {
+	if (c.req.path.startsWith('/api/')) {
+		return handleNotFound(c, 'API endpoint not found');
+	}
+	return c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
 });
 
 export default app;

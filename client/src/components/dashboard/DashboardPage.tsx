@@ -185,7 +185,7 @@ export default function DashboardPage() {
 								{overdueItems.slice(0, 3).map(({ item, vehicle }) => (
 									<Link
 										key={`o-${item.id}`}
-										to={`/kendaraan/${vehicle.id}`}
+										to={`/kendaraan/${vehicle.shortId || vehicle.id}`}
 										className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent transition-colors"
 									>
 										<div className="min-w-0 flex-1">
@@ -198,7 +198,7 @@ export default function DashboardPage() {
 								{dueSoonItems.slice(0, 3).map(({ item, vehicle, progress }) => (
 									<Link
 										key={`d-${item.id}`}
-										to={`/kendaraan/${vehicle.id}`}
+										to={`/kendaraan/${vehicle.shortId || vehicle.id}`}
 										className="flex items-center justify-between rounded-lg border p-3 hover:bg-accent transition-colors"
 									>
 										<div className="min-w-0 flex-1">

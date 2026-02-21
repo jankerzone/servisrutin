@@ -18,6 +18,7 @@ export const sessions = sqliteTable('sessions', {
 
 export const kendaraan = sqliteTable('kendaraan', {
 	id: integer('id').primaryKey(),
+	shortId: text('short_id').unique(),
 	userId: integer('user_id').notNull().references(() => users.id),
 	nama: text('nama').notNull(),
 	tipe: text('tipe'), // "Motor" or "Mobil"

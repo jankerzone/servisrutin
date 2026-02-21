@@ -8,6 +8,7 @@ export interface User {
 // ---- Vehicle ----
 export interface Vehicle {
 	id: number;
+	shortId?: string;
 	nama: string;
 	tipe: string | null;
 	plat: string | null;
@@ -97,6 +98,7 @@ export interface ApiSuccess {
 // ---- DB row types (snake_case from API) ----
 export interface VehicleRow {
 	id: number;
+	short_id?: string;
 	user_id: number;
 	nama: string;
 	tipe: string | null;
@@ -133,6 +135,7 @@ export interface ServiceHistoryRow {
 export function toVehicle(row: VehicleRow): Vehicle {
 	return {
 		id: row.id,
+		shortId: row.short_id,
 		nama: row.nama,
 		tipe: row.tipe,
 		plat: row.plat,

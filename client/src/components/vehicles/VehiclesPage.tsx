@@ -61,7 +61,7 @@ export default function VehiclesPage() {
 			) : (
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{vehicles.map((vehicle) => (
-						<Link key={vehicle.id} to={`/kendaraan/${vehicle.id}`}>
+						<Link key={vehicle.id} to={`/kendaraan/${vehicle.shortId || vehicle.id}`}>
 							<Card className="group hover:shadow-md transition-all hover:border-primary/30 cursor-pointer h-full">
 								<CardContent className="p-6">
 									<div className="flex items-start justify-between mb-4">
