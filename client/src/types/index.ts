@@ -15,6 +15,8 @@ export interface Vehicle {
 	tahun: number | null;
 	bulanPajak: number | null;
 	currentKm: number;
+	pajakTahunanSampai: string | null;
+	pajak5TahunanSampai: string | null;
 }
 
 export interface VehiclePayload {
@@ -74,6 +76,27 @@ export interface ServiceHistoryPayload {
 	notes: string | null;
 }
 
+// ---- Tax Payment ----
+export interface TaxPayment {
+	id: number;
+	kendaraanId: number;
+	type: 'tahunan' | '5tahunan';
+	paidUntil: string; // "2027-03"
+	paidDate: string; // "2026-02-21"
+	cost: number | null;
+	notes: string | null;
+	createdAt: string;
+}
+
+export interface TaxPaymentPayload {
+	kendaraanId: number;
+	type: 'tahunan' | '5tahunan';
+	paidUntil: string;
+	paidDate: string;
+	cost: number | null;
+	notes: string | null;
+}
+
 // ---- Dashboard ----
 export interface DashboardStats {
 	totalVehicles: number;
@@ -106,6 +129,8 @@ export interface VehicleRow {
 	tahun: number | null;
 	bulan_pajak: number | null;
 	current_km: number;
+	pajak_tahunan_sampai: string | null;
+	pajak_5tahunan_sampai: string | null;
 }
 
 export interface ServiceItemRow {
@@ -131,6 +156,17 @@ export interface ServiceHistoryRow {
 	created_at: string;
 }
 
+export interface TaxPaymentRow {
+	id: number;
+	kendaraan_id: number;
+	type: string;
+	paid_until: string;
+	paid_date: string;
+	cost: number | null;
+	notes: string | null;
+	created_at: string;
+}
+
 // ---- Transformers ----
 export function toVehicle(row: VehicleRow): Vehicle {
 	return {
@@ -142,6 +178,8 @@ export function toVehicle(row: VehicleRow): Vehicle {
 		tahun: row.tahun,
 		bulanPajak: row.bulan_pajak,
 		currentKm: row.current_km ?? 0,
+		pajakTahunanSampai: row.pajak_tahunan_sampai ?? null,
+		pajak5TahunanSampai: row.pajak_5tahunan_sampai ?? null,
 	};
 }
 
@@ -167,6 +205,19 @@ export function toServiceHistory(row: ServiceHistoryRow): ServiceHistory {
 		odometerKm: row.odometer_km,
 		serviceItemIds: JSON.parse(row.service_item_ids),
 		totalCost: row.total_cost,
+		notes: row.notes,
+		createdAt: row.created_at,
+	};
+}
+
+export function toTaxPayment(row: TaxPaymentRow): TaxPayment {
+	return {
+		id: row.id,
+		kendaraanId: row.kendaraan_id,
+		type: row.type as 'tahunan' | '5tahunan',
+		paidUntil: row.paid_until,
+		paidDate: row.paid_date,
+		cost: row.cost,
 		notes: row.notes,
 		createdAt: row.created_at,
 	};

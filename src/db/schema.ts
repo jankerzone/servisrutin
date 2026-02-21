@@ -26,6 +26,8 @@ export const kendaraan = sqliteTable('kendaraan', {
 	tahun: integer('tahun'),
 	bulanPajak: integer('bulan_pajak'),
 	currentKm: integer('current_km').default(0),
+	pajakTahunanSampai: text('pajak_tahunan_sampai'), // "2027-03" = paid until March 2027
+	pajak5TahunanSampai: text('pajak_5tahunan_sampai'), // "2029-03" = paid until March 2029
 });
 
 export const serviceItems = sqliteTable('service_items', {
@@ -47,6 +49,17 @@ export const serviceHistory = sqliteTable('service_history', {
 	odometerKm: integer('odometer_km').notNull(),
 	serviceItemIds: text('service_item_ids').notNull(), // JSON array of service item IDs
 	totalCost: integer('total_cost'), // Optional, in rupiah
+	notes: text('notes'),
+	createdAt: text('created_at').notNull(), // ISO timestamp
+});
+
+export const taxPayments = sqliteTable('tax_payments', {
+	id: integer('id').primaryKey(),
+	kendaraanId: integer('kendaraan_id').notNull().references(() => kendaraan.id),
+	type: text('type').notNull(), // "tahunan" or "5tahunan"
+	paidUntil: text('paid_until').notNull(), // "2027-03"
+	paidDate: text('paid_date').notNull(), // "2026-02-21"
+	cost: integer('cost'), // Optional, in rupiah
 	notes: text('notes'),
 	createdAt: text('created_at').notNull(), // ISO timestamp
 });

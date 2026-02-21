@@ -358,6 +358,42 @@ app.put('/api/vehicles/:id', async (c) => {
 	}
 });
 
+// Update tax payment status
+app.put('/api/vehicles/:id/tax', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const id = c.req.param('id');
+		const body = await c.req.json();
+		const { type, paidUntil } = body; // type: 'tahunan' | '5tahunan', paidUntil: '2027-03'
+		const db = c.env.DB;
+
+		if (!type || !paidUntil) {
+			return handleValidationError(c, 'Type and paidUntil are required');
+		}
+
+		if (!['tahunan', '5tahunan'].includes(type)) {
+			return handleValidationError(c, 'Invalid tax type');
+		}
+
+		// Validate format YYYY-MM
+		if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(paidUntil)) {
+			return handleValidationError(c, 'Invalid date format. Use YYYY-MM');
+		}
+
+		const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(id, user.id).first();
+		if (!vehicle) {
+			return handleNotFound(c, 'Vehicle not found or unauthorized');
+		}
+
+		const column = type === 'tahunan' ? 'pajak_tahunan_sampai' : 'pajak_5tahunan_sampai';
+		await db.prepare(`UPDATE kendaraan SET ${column} = ? WHERE id = ?`).bind(paidUntil, id).run();
+
+		return c.json({ success: true });
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
 app.delete('/api/vehicles/:id', async (c) => {
 	try {
 		const user = getAuthUser(c);
@@ -371,6 +407,7 @@ app.delete('/api/vehicles/:id', async (c) => {
 
 		// Use batch for atomic cascade delete
 		await db.batch([
+			db.prepare('DELETE FROM tax_payments WHERE kendaraan_id = ?').bind(id),
 			db.prepare('DELETE FROM service_history WHERE kendaraan_id = ?').bind(id),
 			db.prepare('DELETE FROM service_items WHERE kendaraan_id = ?').bind(id),
 			db.prepare('DELETE FROM kendaraan WHERE id = ?').bind(id),
@@ -575,6 +612,88 @@ app.get('/api/service-history', async (c) => {
 		const results = await db
 			.prepare('SELECT * FROM service_history WHERE kendaraan_id = ? ORDER BY service_date DESC, created_at DESC')
 			.bind(kendaraanId)
+			.all();
+
+		return c.json(results);
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
+// ---- Tax Payment routes ----
+
+app.post('/api/tax-payments', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const body = await c.req.json();
+		const { kendaraanId, type, paidUntil, paidDate, cost, notes } = body;
+		const db = c.env.DB;
+
+		if (!kendaraanId || !type || !paidUntil || !paidDate) {
+			return handleValidationError(c, 'kendaraanId, type, paidUntil, and paidDate are required');
+		}
+
+		if (!['tahunan', '5tahunan'].includes(type)) {
+			return handleValidationError(c, 'Invalid tax type');
+		}
+
+		if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(paidUntil)) {
+			return handleValidationError(c, 'Invalid paidUntil format. Use YYYY-MM');
+		}
+
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(paidDate)) {
+			return handleValidationError(c, 'Invalid paidDate format. Use YYYY-MM-DD');
+		}
+
+		const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(kendaraanId, user.id).first();
+		if (!vehicle) {
+			return handleNotFound(c, 'Vehicle not found or unauthorized');
+		}
+
+		const createdAt = new Date().toISOString();
+		const column = type === 'tahunan' ? 'pajak_tahunan_sampai' : 'pajak_5tahunan_sampai';
+
+		// Atomically insert payment record + update vehicle's tax status
+		await db.batch([
+			db.prepare(
+				'INSERT INTO tax_payments (kendaraan_id, type, paid_until, paid_date, cost, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+			).bind(kendaraanId, type, paidUntil, paidDate, cost || null, notes || null, createdAt),
+			db.prepare(`UPDATE kendaraan SET ${column} = ? WHERE id = ?`).bind(paidUntil, kendaraanId),
+		]);
+
+		return c.json({ success: true });
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
+app.get('/api/tax-payments', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const kendaraanId = c.req.query('kendaraanId');
+		const db = c.env.DB;
+
+		if (kendaraanId) {
+			// Fetch for a specific vehicle
+			const vehicle = await db.prepare('SELECT id FROM kendaraan WHERE id = ? AND user_id = ?').bind(kendaraanId, user.id).first();
+			if (!vehicle) {
+				return handleNotFound(c, 'Vehicle not found or unauthorized');
+			}
+
+			const results = await db
+				.prepare('SELECT * FROM tax_payments WHERE kendaraan_id = ? ORDER BY paid_date DESC, created_at DESC')
+				.bind(kendaraanId)
+				.all();
+
+			return c.json(results);
+		}
+
+		// Fetch all tax payments for all user's vehicles
+		const results = await db
+			.prepare(
+				'SELECT tp.* FROM tax_payments tp JOIN kendaraan k ON tp.kendaraan_id = k.id WHERE k.user_id = ? ORDER BY tp.paid_date DESC, tp.created_at DESC',
+			)
+			.bind(user.id)
 			.all();
 
 		return c.json(results);

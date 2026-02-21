@@ -44,5 +44,10 @@ export function useVehicles() {
 		await fetchVehicles();
 	};
 
-	return { vehicles, loading, fetchVehicles, addVehicle, updateKm, deleteVehicle, updateVehicle };
+	const updateTax = async (vehicleId: number, type: 'tahunan' | '5tahunan', paidUntil: string) => {
+		await api.put(`/api/vehicles/${vehicleId}/tax`, { type, paidUntil });
+		await fetchVehicles();
+	};
+
+	return { vehicles, loading, fetchVehicles, addVehicle, updateKm, deleteVehicle, updateVehicle, updateTax };
 }
