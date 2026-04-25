@@ -702,6 +702,276 @@ app.get('/api/tax-payments', async (c) => {
 	}
 });
 
+// ---- Elektronik routes ----
+
+app.get('/api/elektronik', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const db = c.env.DB;
+		const results = await db.prepare('SELECT * FROM elektronik WHERE user_id = ? ORDER BY nama').bind(user.id).all();
+		return c.json(results);
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
+app.post('/api/elektronik', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		if (!user || !user.id) return handleUnauthorized(c);
+
+		const body = await c.req.json();
+		const { nama, tipe, lokasi, tahunBeli } = body;
+		const db = c.env.DB;
+
+		if (!nama || !nama.trim()) {
+			return handleValidationError(c, 'Nama elektronik wajib diisi');
+		}
+
+		let result;
+		let attempts = 0;
+		const maxAttempts = 5;
+
+		while (attempts < maxAttempts) {
+			try {
+				result = await db
+					.prepare('INSERT INTO elektronik (user_id, nama, tipe, lokasi, tahun_beli, short_id) VALUES (?, ?, ?, ?, ?, lower(hex(randomblob(4))))')
+					.bind(user.id, nama.trim(), tipe || null, lokasi || null, tahunBeli || null)
+					.run();
+				break;
+			} catch (e: any) {
+				if (e.message && e.message.includes('UNIQUE constraint failed')) {
+					attempts++;
+				} else {
+					throw e;
+				}
+			}
+		}
+
+		if (!result) throw new Error('Gagal membuat ID unik setelah beberapa percobaan');
+
+		return c.json({ success: true, result });
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
+app.put('/api/elektronik/:id', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const id = c.req.param('id');
+		const body = await c.req.json();
+		const { nama, tipe, lokasi, tahunBeli } = body;
+		const db = c.env.DB;
+
+		if (!nama || !nama.trim()) {
+			return handleValidationError(c, 'Nama elektronik wajib diisi');
+		}
+
+		const item = await db.prepare('SELECT id FROM elektronik WHERE id = ? AND user_id = ?').bind(id, user.id).first();
+		if (!item) return handleNotFound(c, 'Elektronik not found or unauthorized');
+
+		await db
+			.prepare('UPDATE elektronik SET nama = ?, tipe = ?, lokasi = ?, tahun_beli = ? WHERE id = ?')
+			.bind(nama.trim(), tipe || null, lokasi || null, tahunBeli || null, id)
+			.run();
+
+		return c.json({ success: true });
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
+app.delete('/api/elektronik/:id', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const id = c.req.param('id');
+		const db = c.env.DB;
+
+		const item = await db.prepare('SELECT id FROM elektronik WHERE id = ? AND user_id = ?').bind(id, user.id).first();
+		if (!item) return handleNotFound(c, 'Elektronik not found or unauthorized');
+
+		await db.batch([
+			db.prepare('DELETE FROM elektronik_service_history WHERE elektronik_id = ?').bind(id),
+			db.prepare('DELETE FROM elektronik_service_items WHERE elektronik_id = ?').bind(id),
+			db.prepare('DELETE FROM elektronik WHERE id = ?').bind(id),
+		]);
+
+		return c.json({ success: true });
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
+// ---- Elektronik Service Item routes ----
+
+app.get('/api/elektronik-service-items', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const elektronikId = c.req.query('elektronikId');
+		const db = c.env.DB;
+
+		if (!elektronikId) return handleValidationError(c, 'elektronikId is required');
+
+		const item = await db.prepare('SELECT id FROM elektronik WHERE id = ? AND user_id = ?').bind(elektronikId, user.id).first();
+		if (!item) return handleNotFound(c, 'Elektronik not found or unauthorized');
+
+		const results = await db.prepare('SELECT * FROM elektronik_service_items WHERE elektronik_id = ? ORDER BY nama').bind(elektronikId).all();
+		return c.json(results);
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
+app.post('/api/elektronik-service-items', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const body = await c.req.json();
+		const { elektronikId, nama, intervalType, intervalValue, lastDate } = body;
+		const db = c.env.DB;
+
+		const item = await db.prepare('SELECT id FROM elektronik WHERE id = ? AND user_id = ?').bind(elektronikId, user.id).first();
+		if (!item) return handleNotFound(c, 'Elektronik not found or unauthorized');
+
+		const validIntervalTypes = ['DAY', 'MONTH', 'YEAR', 'NONE'];
+		if (intervalType && !validIntervalTypes.includes(intervalType)) {
+			return handleValidationError(c, 'Invalid interval_type. Must be DAY, MONTH, YEAR, or NONE');
+		}
+
+		await db
+			.prepare('INSERT INTO elektronik_service_items (elektronik_id, nama, interval_type, interval_value, last_date) VALUES (?, ?, ?, ?, ?)')
+			.bind(elektronikId, nama, intervalType || 'NONE', intervalType === 'NONE' ? null : intervalValue || null, lastDate || null)
+			.run();
+
+		return c.json({ success: true });
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
+app.put('/api/elektronik-service-items/:id', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const id = c.req.param('id');
+		const body = await c.req.json();
+		const { nama, intervalType, intervalValue, lastDate } = body;
+		const db = c.env.DB;
+
+		const serviceItem = await db
+			.prepare('SELECT si.id FROM elektronik_service_items si JOIN elektronik e ON si.elektronik_id = e.id WHERE si.id = ? AND e.user_id = ?')
+			.bind(id, user.id)
+			.first();
+		if (!serviceItem) return handleNotFound(c, 'Service item not found or unauthorized');
+
+		const validIntervalTypes = ['DAY', 'MONTH', 'YEAR', 'NONE'];
+		if (intervalType && !validIntervalTypes.includes(intervalType)) {
+			return handleValidationError(c, 'Invalid interval_type. Must be DAY, MONTH, YEAR, or NONE');
+		}
+
+		await db
+			.prepare('UPDATE elektronik_service_items SET nama = ?, interval_type = ?, interval_value = ?, last_date = ? WHERE id = ?')
+			.bind(nama, intervalType || 'NONE', intervalType === 'NONE' ? null : intervalValue || null, lastDate || null, id)
+			.run();
+
+		return c.json({ success: true });
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
+app.delete('/api/elektronik-service-items/:id', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const id = c.req.param('id');
+		const db = c.env.DB;
+
+		const serviceItem = await db
+			.prepare('SELECT si.id FROM elektronik_service_items si JOIN elektronik e ON si.elektronik_id = e.id WHERE si.id = ? AND e.user_id = ?')
+			.bind(id, user.id)
+			.first();
+		if (!serviceItem) return handleNotFound(c, 'Service item not found or unauthorized');
+
+		await db.prepare('DELETE FROM elektronik_service_items WHERE id = ?').bind(id).run();
+		return c.json({ success: true });
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
+// ---- Elektronik Service History routes ----
+
+app.post('/api/elektronik-service-history', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const body = await c.req.json();
+		const { elektronikId, serviceDate, serviceItemIds, totalCost, notes } = body;
+		const db = c.env.DB;
+
+		if (!elektronikId || !serviceDate || !serviceItemIds || serviceItemIds.length === 0) {
+			return handleValidationError(c, 'elektronikId, serviceDate, and serviceItemIds are required');
+		}
+
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) {
+			return handleValidationError(c, 'Invalid serviceDate format. Use YYYY-MM-DD');
+		}
+
+		const item = await db.prepare('SELECT id FROM elektronik WHERE id = ? AND user_id = ?').bind(elektronikId, user.id).first();
+		if (!item) return handleNotFound(c, 'Elektronik not found or unauthorized');
+
+		const placeholders = serviceItemIds.map(() => '?').join(',');
+		const validItems = await db
+			.prepare(`SELECT id FROM elektronik_service_items WHERE elektronik_id = ? AND id IN (${placeholders})`)
+			.bind(elektronikId, ...serviceItemIds)
+			.all();
+
+		const uniqueRequestedIds = new Set(serviceItemIds);
+		if (validItems.results.length !== uniqueRequestedIds.size) {
+			return handleValidationError(c, 'One or more service items are invalid or do not belong to this elektronik');
+		}
+
+		const createdAt = new Date().toISOString();
+
+		const statements = [
+			db.prepare(
+				'INSERT INTO elektronik_service_history (elektronik_id, service_date, service_item_ids, total_cost, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+			).bind(elektronikId, serviceDate, JSON.stringify(serviceItemIds), totalCost || null, notes || null, createdAt),
+		];
+
+		for (const itemId of serviceItemIds) {
+			statements.push(
+				db.prepare('UPDATE elektronik_service_items SET last_date = ? WHERE id = ?').bind(serviceDate, itemId),
+			);
+		}
+
+		await db.batch(statements);
+		return c.json({ success: true });
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
+app.get('/api/elektronik-service-history', async (c) => {
+	try {
+		const user = getAuthUser(c);
+		const elektronikId = c.req.query('elektronikId');
+		const db = c.env.DB;
+
+		if (!elektronikId) return handleValidationError(c, 'elektronikId is required');
+
+		const item = await db.prepare('SELECT id FROM elektronik WHERE id = ? AND user_id = ?').bind(elektronikId, user.id).first();
+		if (!item) return handleNotFound(c, 'Elektronik not found or unauthorized');
+
+		const results = await db
+			.prepare('SELECT * FROM elektronik_service_history WHERE elektronik_id = ? ORDER BY service_date DESC, created_at DESC')
+			.bind(elektronikId)
+			.all();
+
+		return c.json(results);
+	} catch (error) {
+		return handleError(c, error);
+	}
+});
+
 // SPA fallback: serve index.html for non-API routes
 app.get('/*', async (c) => {
 	if (c.req.path.startsWith('/api/')) {
