@@ -222,3 +222,124 @@ export function toTaxPayment(row: TaxPaymentRow): TaxPayment {
 		createdAt: row.created_at,
 	};
 }
+
+// ---- Elektronik ----
+export interface Elektronik {
+	id: number;
+	shortId?: string;
+	nama: string;
+	tipe: string | null;
+	lokasi: string | null;
+	tahunBeli: number | null;
+}
+
+export interface ElektronikPayload {
+	nama: string;
+	tipe: string | null;
+	lokasi: string | null;
+	tahunBeli: number | null;
+}
+
+// ---- Elektronik Service Item ----
+export type ElektronikIntervalType = 'DAY' | 'MONTH' | 'YEAR' | 'NONE';
+
+export interface ElektronikServiceItem {
+	id: number;
+	elektronikId: number;
+	nama: string;
+	intervalType: ElektronikIntervalType | null;
+	intervalValue: number | null;
+	lastDate: string | null;
+}
+
+export interface ElektronikServiceItemPayload {
+	elektronikId: number;
+	nama: string;
+	intervalType: ElektronikIntervalType;
+	intervalValue: number | null;
+	lastDate: string | null;
+}
+
+// ---- Elektronik Service History ----
+export interface ElektronikServiceHistory {
+	id: number;
+	elektronikId: number;
+	serviceDate: string;
+	serviceItemIds: number[];
+	totalCost: number | null;
+	notes: string | null;
+	createdAt: string;
+}
+
+export interface ElektronikServiceHistoryPayload {
+	elektronikId: number;
+	serviceDate: string;
+	serviceItemIds: number[];
+	totalCost: number | null;
+	notes: string | null;
+}
+
+// ---- DB row types (snake_case from API) ----
+export interface ElektronikRow {
+	id: number;
+	short_id?: string;
+	user_id: number;
+	nama: string;
+	tipe: string | null;
+	lokasi: string | null;
+	tahun_beli: number | null;
+}
+
+export interface ElektronikServiceItemRow {
+	id: number;
+	elektronik_id: number;
+	nama: string;
+	interval_type: string | null;
+	interval_value: number | null;
+	last_date: string | null;
+}
+
+export interface ElektronikServiceHistoryRow {
+	id: number;
+	elektronik_id: number;
+	service_date: string;
+	service_item_ids: string;
+	total_cost: number | null;
+	notes: string | null;
+	created_at: string;
+}
+
+// ---- Transformers ----
+export function toElektronik(row: ElektronikRow): Elektronik {
+	return {
+		id: row.id,
+		shortId: row.short_id,
+		nama: row.nama,
+		tipe: row.tipe,
+		lokasi: row.lokasi,
+		tahunBeli: row.tahun_beli,
+	};
+}
+
+export function toElektronikServiceItem(row: ElektronikServiceItemRow): ElektronikServiceItem {
+	return {
+		id: row.id,
+		elektronikId: row.elektronik_id,
+		nama: row.nama,
+		intervalType: row.interval_type as ElektronikIntervalType | null,
+		intervalValue: row.interval_value,
+		lastDate: row.last_date,
+	};
+}
+
+export function toElektronikServiceHistory(row: ElektronikServiceHistoryRow): ElektronikServiceHistory {
+	return {
+		id: row.id,
+		elektronikId: row.elektronik_id,
+		serviceDate: row.service_date,
+		serviceItemIds: JSON.parse(row.service_item_ids),
+		totalCost: row.total_cost,
+		notes: row.notes,
+		createdAt: row.created_at,
+	};
+}

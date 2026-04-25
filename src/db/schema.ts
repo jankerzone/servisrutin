@@ -63,3 +63,32 @@ export const taxPayments = sqliteTable('tax_payments', {
 	notes: text('notes'),
 	createdAt: text('created_at').notNull(), // ISO timestamp
 });
+
+export const elektronik = sqliteTable('elektronik', {
+	id: integer('id').primaryKey(),
+	shortId: text('short_id').unique(),
+	userId: integer('user_id').notNull().references(() => users.id),
+	nama: text('nama').notNull(),
+	tipe: text('tipe'),
+	lokasi: text('lokasi'),
+	tahunBeli: integer('tahun_beli'),
+});
+
+export const elektronikServiceItems = sqliteTable('elektronik_service_items', {
+	id: integer('id').primaryKey(),
+	elektronikId: integer('elektronik_id').notNull().references(() => elektronik.id),
+	nama: text('nama').notNull(),
+	intervalType: text('interval_type'),
+	intervalValue: integer('interval_value'),
+	lastDate: text('last_date'),
+});
+
+export const elektronikServiceHistory = sqliteTable('elektronik_service_history', {
+	id: integer('id').primaryKey(),
+	elektronikId: integer('elektronik_id').notNull().references(() => elektronik.id),
+	serviceDate: text('service_date').notNull(),
+	serviceItemIds: text('service_item_ids').notNull(),
+	totalCost: integer('total_cost'),
+	notes: text('notes'),
+	createdAt: text('created_at').notNull(),
+});
