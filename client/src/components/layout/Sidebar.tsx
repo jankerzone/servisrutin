@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Car, History, X } from 'lucide-react';
+import { LayoutDashboard, Car, History, X, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
 	{ to: '/', label: 'Dashboard', icon: LayoutDashboard },
 	{ to: '/kendaraan', label: 'Kendaraan', icon: Car },
+	{ to: '/elektronik', label: 'Elektronik', icon: Monitor },
 	{ to: '/riwayat', label: 'Riwayat Servis', icon: History },
 ];
 

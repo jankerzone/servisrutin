@@ -8,6 +8,8 @@ import AuthPage from '@/components/auth/AuthPage';
 import DashboardPage from '@/components/dashboard/DashboardPage';
 import VehiclesPage from '@/components/vehicles/VehiclesPage';
 import VehicleDetailPage from '@/components/vehicles/VehicleDetailPage';
+import ElektronikPage from '@/components/elektronik/ElektronikPage';
+import ElektronikDetailPage from '@/components/elektronik/ElektronikDetailPage';
 import HistoryPage from '@/components/history/HistoryPage';
 import ProfilePage from '@/components/profile/ProfilePage';
 
@@ -78,6 +80,8 @@ export default function App() {
 					<Route index element={<DashboardPage />} />
 					<Route path="kendaraan" element={<VehiclesPage />} />
 					<Route path="kendaraan/:id" element={<VehicleDetailPage />} />
+					<Route path="elektronik" element={<ElektronikPage />} />
+					<Route path="elektronik/:id" element={<ElektronikDetailPage />} />
 					<Route path="riwayat" element={<HistoryPage />} />
 					<Route path="profil" element={<ProfilePage />} />
 				</Route>
