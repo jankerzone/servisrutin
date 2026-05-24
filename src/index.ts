@@ -13,8 +13,21 @@ const app = new Hono<{ Bindings: Bindings, Variables: { user: any } }>();
 app.use(
 	'/*',
 	cors({
-		// TODO: Restrict to actual frontend domain in production
-		origin: (origin) => origin,
+		origin: (origin, c) => {
+			if (!origin) return undefined;
+			try {
+				const url = new URL(origin);
+				// Allow localhost for dev
+				if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+					return origin;
+				}
+				// In production, backend and frontend share the same domain via Cloudflare Workers assets.
+				// Cross-origin requests from other domains are generally not intended for this app.
+				return undefined;
+			} catch (e) {
+				return undefined;
+			}
+		},
 		credentials: true,
 	}),
 );
@@ -30,11 +43,13 @@ app.post('/api/auth/signup', async (c) => {
 		const body = await c.req.json();
 		const { email, password, name, turnstileToken } = body;
 
-		if (!email || !password) {
-			return handleValidationError(c, 'Email and password are required');
+		if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+			return handleValidationError(c, 'Email and password are required and must be strings');
 		}
 
-		if (!isValidEmail(email)) {
+		const normalizedEmail = email.toLowerCase();
+
+		if (!isValidEmail(normalizedEmail)) {
 			return handleValidationError(c, 'Invalid email format');
 		}
 
@@ -54,7 +69,7 @@ app.post('/api/auth/signup', async (c) => {
 
 		const db = c.env.DB;
 
-		const existingUser = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
+		const existingUser = await db.prepare('SELECT id FROM users WHERE LOWER(email) = LOWER(?)').bind(normalizedEmail).first();
 
 		if (existingUser) {
 			return handleValidationError(c, 'Email already registered');
@@ -65,7 +80,7 @@ app.post('/api/auth/signup', async (c) => {
 
 		const result = await db
 			.prepare('INSERT INTO users (email, password_hash, name, created_at) VALUES (?, ?, ?, ?)')
-			.bind(email, passwordHash, name || null, createdAt)
+			.bind(normalizedEmail, passwordHash, name || null, createdAt)
 			.run();
 
 		const userId = result.meta.last_row_id;
@@ -79,7 +94,7 @@ app.post('/api/auth/signup', async (c) => {
 			path: '/',
 		});
 
-		return c.json({ success: true, user: { id: userId, email, name } });
+		return c.json({ success: true, user: { id: userId, email: normalizedEmail, name } });
 	} catch (error) {
 		return handleError(c, error);
 	}
@@ -90,9 +105,11 @@ app.post('/api/auth/login', async (c) => {
 		const body = await c.req.json();
 		const { email, password, turnstileToken } = body;
 
-		if (!email || !password) {
-			return handleValidationError(c, 'Email and password are required');
+		if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+			return handleValidationError(c, 'Email and password are required and must be strings');
 		}
+
+		const normalizedEmail = email.toLowerCase();
 
 		// Verify Turnstile token
 		if (!turnstileToken) {
@@ -106,7 +123,7 @@ app.post('/api/auth/login', async (c) => {
 
 		const db = c.env.DB;
 
-		const user = await db.prepare('SELECT id, email, name, password_hash FROM users WHERE email = ?').bind(email).first();
+		const user = await db.prepare('SELECT id, email, name, password_hash FROM users WHERE LOWER(email) = LOWER(?)').bind(normalizedEmail).first();
 
 		if (!user) {
 			return handleUnauthorized(c, 'Invalid email or password');
@@ -177,6 +194,11 @@ app.put('/api/profile', async (c) => {
 
 		const body = await c.req.json();
 		const { name, avatarUrl } = body;
+
+		if ((name !== undefined && name !== null && typeof name !== 'string') ||
+			(avatarUrl !== undefined && avatarUrl !== null && typeof avatarUrl !== 'string')) {
+			return handleValidationError(c, 'Invalid field type for name or avatarUrl');
+		}
 
 		await c.env.DB.prepare('UPDATE users SET name = ?, avatar_url = ? WHERE id = ?')
 			.bind(name || null, avatarUrl || null, user.id)
@@ -537,8 +559,8 @@ app.post('/api/service-history', async (c) => {
 		const { kendaraanId, serviceDate, odometerKm, serviceItemIds, totalCost, notes } = body;
 		const db = c.env.DB;
 
-		if (!kendaraanId || !serviceDate || !odometerKm || !serviceItemIds || serviceItemIds.length === 0) {
-			return handleValidationError(c, 'Missing required fields');
+		if (!kendaraanId || !serviceDate || !odometerKm || !serviceItemIds || !Array.isArray(serviceItemIds) || serviceItemIds.length === 0) {
+			return handleValidationError(c, 'Missing required fields or invalid format');
 		}
 
 		if (!isValidOdometer(odometerKm)) {
