@@ -7,8 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthStore } from '@/store/useAuthStore';
 
 const TURNSTILE_SITE_KEY =
-	window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-		? '1x00000000000000000000AA' // Cloudflare test key — always passes on localhost
+	window.location.hostname === 'localhost' ||
+	window.location.hostname === '127.0.0.1' ||
+	window.location.hostname === 'servis-rutin-staging.jankerzone.workers.dev'
+		? '1x00000000000000000000AA' // Cloudflare test key — always passes on localhost & staging
 		: '0x4AAAAAAB6vY94lTHtRt2JR';
 
 declare global {

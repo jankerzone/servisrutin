@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { cors } from 'hono/cors';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { hashPassword, verifyPassword, createSession, getSessionUser, deleteSession, authMiddleware, getAuthUser } from './auth';
@@ -18,6 +19,25 @@ app.use(
 		credentials: true,
 	}),
 );
+
+// Rate limit auth endpoints to slow down brute-force / credential stuffing.
+// Keyed by client IP. Skipped on staging for easier manual testing.
+const authRateLimit = async (
+	c: Context<{ Bindings: Bindings }>,
+	next: () => Promise<void>,
+) => {
+	if (c.env.ENVIRONMENT === 'staging' || !c.env.AUTH_LIMITER) {
+		return next();
+	}
+	const ip = c.req.header('CF-Connecting-IP') || 'unknown';
+	const { success } = await c.env.AUTH_LIMITER.limit({ key: ip });
+	if (!success) {
+		return c.json({ error: 'Terlalu banyak percobaan. Silakan tunggu sebentar dan coba lagi.' }, 429);
+	}
+	await next();
+};
+app.use('/api/auth/login', authRateLimit);
+app.use('/api/auth/signup', authRateLimit);
 
 // API Routes
 app.get('/api/health', (c) => {
@@ -43,13 +63,15 @@ app.post('/api/auth/signup', async (c) => {
 		}
 
 		// Verify Turnstile token
-		if (!turnstileToken) {
-			return handleValidationError(c, 'Verifikasi keamanan diperlukan');
-		}
-		const ip = c.req.header('CF-Connecting-IP');
-		const turnstileOk = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET_KEY, ip);
-		if (!turnstileOk) {
-			return c.json({ error: 'Verifikasi keamanan gagal. Silakan coba lagi.' }, 403);
+		if (c.env.ENVIRONMENT !== 'staging') {
+			if (!turnstileToken) {
+				return handleValidationError(c, 'Verifikasi keamanan diperlukan');
+			}
+			const ip = c.req.header('CF-Connecting-IP');
+			const turnstileOk = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET_KEY, ip);
+			if (!turnstileOk) {
+				return c.json({ error: 'Verifikasi keamanan gagal. Silakan coba lagi.' }, 403);
+			}
 		}
 
 		const db = c.env.DB;
@@ -95,13 +117,15 @@ app.post('/api/auth/login', async (c) => {
 		}
 
 		// Verify Turnstile token
-		if (!turnstileToken) {
-			return handleValidationError(c, 'Verifikasi keamanan diperlukan');
-		}
-		const ip = c.req.header('CF-Connecting-IP');
-		const turnstileOk = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET_KEY, ip);
-		if (!turnstileOk) {
-			return c.json({ error: 'Verifikasi keamanan gagal. Silakan coba lagi.' }, 403);
+		if (c.env.ENVIRONMENT !== 'staging') {
+			if (!turnstileToken) {
+				return handleValidationError(c, 'Verifikasi keamanan diperlukan');
+			}
+			const ip = c.req.header('CF-Connecting-IP');
+			const turnstileOk = await verifyTurnstile(turnstileToken, c.env.TURNSTILE_SECRET_KEY, ip);
+			if (!turnstileOk) {
+				return c.json({ error: 'Verifikasi keamanan gagal. Silakan coba lagi.' }, 403);
+			}
 		}
 
 		const db = c.env.DB;
@@ -165,15 +189,19 @@ app.get('/api/auth/me', async (c) => {
 	}
 });
 
+// Protected routes - require authentication
+app.use('/api/*', async (c, next) => {
+	const path = c.req.path;
+	if (path.startsWith('/api/auth/') || path === '/api/health') {
+		return next();
+	}
+	return authMiddleware(c, next);
+});
+
 // Update profile (Name, Avatar)
 app.put('/api/profile', async (c) => {
 	try {
-		const sessionId = getCookie(c, 'session_id');
-		const user = await getSessionUser(c.env.DB, sessionId);
-
-		if (!user) {
-			return handleUnauthorized(c);
-		}
+		const user = getAuthUser(c);
 
 		const body = await c.req.json();
 		const { name, avatarUrl } = body;
@@ -191,12 +219,7 @@ app.put('/api/profile', async (c) => {
 // Change password
 app.put('/api/profile/password', async (c) => {
 	try {
-		const sessionId = getCookie(c, 'session_id');
-		const user = await getSessionUser(c.env.DB, sessionId);
-
-		if (!user) {
-			return handleUnauthorized(c);
-		}
+		const user = getAuthUser(c);
 
 		const body = await c.req.json();
 		const { oldPassword, newPassword } = body;
@@ -229,15 +252,6 @@ app.put('/api/profile/password', async (c) => {
 	} catch (error) {
 		return handleError(c, error);
 	}
-});
-
-// Protected routes - require authentication
-app.use('/api/*', async (c, next) => {
-	const path = c.req.path;
-	if (path.startsWith('/api/auth/') || path === '/api/health') {
-		return next();
-	}
-	return authMiddleware(c, next);
 });
 
 // ---- Vehicle routes ----
@@ -539,6 +553,10 @@ app.post('/api/service-history', async (c) => {
 
 		if (!kendaraanId || !serviceDate || !odometerKm || !serviceItemIds || serviceItemIds.length === 0) {
 			return handleValidationError(c, 'Missing required fields');
+		}
+
+		if (!Array.isArray(serviceItemIds) || serviceItemIds.length > 50 || !serviceItemIds.every((id: unknown) => Number.isInteger(id) && (id as number) > 0)) {
+			return handleValidationError(c, 'serviceItemIds must be an array of positive integers (max 50)');
 		}
 
 		if (!isValidOdometer(odometerKm)) {
@@ -911,6 +929,10 @@ app.post('/api/elektronik-service-history', async (c) => {
 			return handleValidationError(c, 'elektronikId, serviceDate, and serviceItemIds are required');
 		}
 
+		if (!Array.isArray(serviceItemIds) || serviceItemIds.length > 50 || !serviceItemIds.every((id: unknown) => Number.isInteger(id) && (id as number) > 0)) {
+			return handleValidationError(c, 'serviceItemIds must be an array of positive integers (max 50)');
+		}
+
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) {
 			return handleValidationError(c, 'Invalid serviceDate format. Use YYYY-MM-DD');
 		}
@@ -980,4 +1002,12 @@ app.get('/*', async (c) => {
 	return c.env.ASSETS.fetch(new Request(new URL('/index.html', c.req.url)));
 });
 
-export default app;
+export default {
+	fetch: app.fetch,
+	// Cron: bersihkan session yang sudah expired (jadwal di wrangler.jsonc — harian jam 03:00 UTC).
+	async scheduled(_event: ScheduledController, env: Bindings, ctx: ExecutionContext) {
+		ctx.waitUntil(
+			env.DB.prepare("DELETE FROM sessions WHERE expires_at < datetime('now')").run(),
+		);
+	},
+} satisfies ExportedHandler<Bindings>;

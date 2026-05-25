@@ -23,5 +23,43 @@
 			"database_name": "servis-rutin-db",
 			"database_id": "01bb5483-d9a9-4efe-899f-6ca0d09798fb"
 		}
-	]
+	],
+	"triggers": {
+		"crons": ["0 3 * * *"]
+	},
+	"unsafe": {
+		"bindings": [
+			{
+				"name": "AUTH_LIMITER",
+				"type": "ratelimit",
+				"namespace_id": "1001",
+				"simple": { "limit": 10, "period": 60 }
+			}
+		]
+	},
+	"env": {
+		"staging": {
+			"name": "servis-rutin-staging",
+			"vars": {
+				"ENVIRONMENT": "staging"
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "servis-rutin-db",
+					"database_id": "01bb5483-d9a9-4efe-899f-6ca0d09798fb"
+				}
+			],
+			"unsafe": {
+				"bindings": [
+					{
+						"name": "AUTH_LIMITER",
+						"type": "ratelimit",
+						"namespace_id": "1002",
+						"simple": { "limit": 30, "period": 60 }
+					}
+				]
+			}
+		}
+	}
 }
