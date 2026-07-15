@@ -480,7 +480,22 @@ app.get('/api/service-items', async (c) => {
 			return handleNotFound(c, 'Vehicle not found or unauthorized');
 		}
 
-		const results = await db.prepare(`SELECT * FROM service_items WHERE kendaraan_id = ? ORDER BY ${order}`).bind(kendaraanId).all();
+		let results;
+		switch (order) {
+			case 'last_date':
+				results = await db.prepare('SELECT * FROM service_items WHERE kendaraan_id = ? ORDER BY last_date').bind(kendaraanId).all();
+				break;
+			case 'last_km':
+				results = await db.prepare('SELECT * FROM service_items WHERE kendaraan_id = ? ORDER BY last_km').bind(kendaraanId).all();
+				break;
+			case 'interval_type':
+				results = await db.prepare('SELECT * FROM service_items WHERE kendaraan_id = ? ORDER BY interval_type').bind(kendaraanId).all();
+				break;
+			case 'nama':
+			default:
+				results = await db.prepare('SELECT * FROM service_items WHERE kendaraan_id = ? ORDER BY nama').bind(kendaraanId).all();
+				break;
+		}
 
 		return c.json(results);
 	} catch (error) {
